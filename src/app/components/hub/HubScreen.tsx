@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Github, Terminal, ArrowRight, Layers, Cpu, Database, Network, LayoutDashboard } from 'lucide-react';
+import { Github, Terminal, ArrowRight, Layers, Cpu, Database, Network, LayoutDashboard, WifiOff, ShieldCheck, Activity, Eye } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
 
@@ -14,11 +13,17 @@ interface HubScreenProps {
   onOpenTerminal: () => void;
   onNeedSetup: () => void;
   onOpenDashboard: () => void;
+  isBackendOffline?: boolean;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export const HubScreen: React.FC<HubScreenProps> = ({ onOpenTerminal, onNeedSetup, onOpenDashboard }) => {
+export const HubScreen: React.FC<HubScreenProps> = ({ 
+  onOpenTerminal, 
+  onNeedSetup, 
+  onOpenDashboard,
+  isBackendOffline = false 
+}) => {
   const heroRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
   const architectureRef = useRef<HTMLDivElement>(null);
@@ -26,7 +31,9 @@ export const HubScreen: React.FC<HubScreenProps> = ({ onOpenTerminal, onNeedSetu
   const [setupStatus, setSetupStatus] = useState<{ is_fully_configured: boolean; has_groq_key: boolean } | null>(null);
 
   useEffect(() => {
-    checkInitialStatus();
+    if (!isBackendOffline) {
+      checkInitialStatus();
+    }
     const ctx = gsap.context(() => {
       // Hero Animations
       gsap.from('.hero-title', {
@@ -106,7 +113,7 @@ export const HubScreen: React.FC<HubScreenProps> = ({ onOpenTerminal, onNeedSetu
     }, [heroRef, cardsRef, architectureRef]);
 
     return () => ctx.revert();
-  }, []);
+  }, [isBackendOffline]);
 
   const checkInitialStatus = async () => {
     try {
@@ -121,6 +128,7 @@ export const HubScreen: React.FC<HubScreenProps> = ({ onOpenTerminal, onNeedSetu
   };
 
   const handleTerminalOrSetup = async () => {
+    if (isBackendOffline) return;
     setIsConfiguring(true);
     try {
       const res = await fetch(`${API_URL}/api/settings`);
@@ -157,6 +165,24 @@ export const HubScreen: React.FC<HubScreenProps> = ({ onOpenTerminal, onNeedSetu
     { name: 'Domain', icon: <Layers size={24} />, color: 'zinc', desc: 'Entidades, Modelos e Regras de Negócio Core.' },
   ];
 
+  const features = [
+    { 
+        title: "Visualizador Neural", 
+        desc: "Acompanhe os agentes trocando dados e tomando decisões em tempo real através do nosso mapa de nós animado.", 
+        icon: <Eye className="text-orange-500" size={24} /> 
+    },
+    { 
+        title: "Vault Gatekeeper", 
+        desc: "Segurança local first. Suas chaves nunca saem da máquina e o acesso é bloqueado até a configuração completa.", 
+        icon: <ShieldCheck className="text-orange-500" size={24} /> 
+    },
+    { 
+        title: "LangSmith Tracing", 
+        desc: "Total transparência. Rastreamento nativo para auditar cada token e pensamento da Inteligência Artificial.", 
+        icon: <Activity className="text-orange-500" size={24} /> 
+    }
+  ];
+
   return (
     <div className="bg-zinc-950 text-white selection:bg-orange-500/30 selection:text-orange-200">
       {/* Hero Section */}
@@ -181,8 +207,8 @@ export const HubScreen: React.FC<HubScreenProps> = ({ onOpenTerminal, onNeedSetu
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={handleTerminalOrSetup}
-              disabled={isConfiguring}
-              className={`hero-cta w-full sm:w-auto font-bold px-8 py-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-300 group ${
+              disabled={isConfiguring || isBackendOffline}
+              className={`hero-cta w-full sm:w-auto font-bold px-8 py-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed ${
                 setupStatus?.is_fully_configured === false 
                 ? 'bg-zinc-900 border border-orange-500/50 text-orange-500 hover:bg-orange-500/10' 
                 : 'bg-orange-500 hover:bg-orange-600 text-black'
@@ -190,21 +216,22 @@ export const HubScreen: React.FC<HubScreenProps> = ({ onOpenTerminal, onNeedSetu
             >
               <Terminal size={20} />
               <span>
-                {isConfiguring ? 'Verificando...' : (setupStatus?.is_fully_configured === false ? 'Config Required' : 'Init System')}
+                {isConfiguring ? 'Verificando...' : (isBackendOffline ? 'Backend Offline' : (setupStatus?.is_fully_configured === false ? 'Config Required' : 'Init System'))}
               </span>
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              {!isBackendOffline && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
             </button>
 
             <button
               onClick={onOpenDashboard}
-              className="hero-cta w-full sm:w-auto bg-zinc-900 border border-zinc-800 hover:border-orange-500/50 text-white font-bold px-8 py-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-300"
+              disabled={isBackendOffline}
+              className={`hero-cta w-full sm:w-auto bg-zinc-900 border border-zinc-800 hover:border-orange-500/50 text-white font-bold px-8 py-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
             </button>
 
             <a
-              href="https://github.com/william-reis/traffic-agents"
+              href="https://github.com/Xwiuu/Agents-Trafego"
               target="_blank"
               rel="noopener noreferrer"
               className="hero-cta w-full sm:w-auto bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-white font-bold px-8 py-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-300"
@@ -213,6 +240,25 @@ export const HubScreen: React.FC<HubScreenProps> = ({ onOpenTerminal, onNeedSetu
               <span>Ver no GitHub</span>
             </a>
           </div>
+        </div>
+      </section>
+
+      {/* Features Highlight */}
+      <section className="py-20 bg-zinc-900/30 border-y border-zinc-900">
+        <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {features.map((feature, i) => (
+                    <div key={i} className="flex flex-col items-start p-6 rounded-2xl bg-zinc-950 border border-zinc-800/50 hover:border-orange-500/30 transition-all duration-500 group">
+                        <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            {feature.icon}
+                        </div>
+                        <h3 className="text-xl font-bold mb-3 group-hover:text-orange-500 transition-colors">{feature.title}</h3>
+                        <p className="text-zinc-500 text-sm leading-relaxed">
+                            {feature.desc}
+                        </p>
+                    </div>
+                ))}
+            </div>
         </div>
       </section>
 

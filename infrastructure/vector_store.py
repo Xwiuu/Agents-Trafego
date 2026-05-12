@@ -1,4 +1,6 @@
-from typing import Dict, List
+import json
+from datetime import datetime
+from typing import Dict, List, Any
 import chromadb
 from langchain_huggingface import HuggingFaceEmbeddings
 
@@ -29,16 +31,19 @@ class VectorStore:
         
         return LangChainEmbeddingFunction(self.embeddings_model)
     
-    def add_insight(self, insight: str, context: str = "{}"):
-        """Salva aprendizados críticos no ChromaDB."""
-        from datetime import datetime
+    def save_insight(self, insight: str, context: dict = {}):
+        """Salva aprendizados críticos e insights de performance no ChromaDB para uso futuro."""
         self.collection.add(
             ids=[f"insight_{datetime.now().timestamp()}"],
             documents=[insight],
-            metadatas=[{"timestamp": str(datetime.now()), "context": context}]
+            metadatas=[{"timestamp": str(datetime.now()), "context": json.dumps(context)}]
         )
     
-    def search_context(self, query: str, n_results: int = 3):
-        """Busca no ChromaDB por análises anteriores e contextos históricos."""
-        results = self.collection.query(query_texts=[query], n_results=n_results)
-        return {"source": "ChromaDB", "status": "success", "results": results.get('documents', [])}
+    def search_history(self, query: str, k: int = 3):
+        """Busca no ChromaDB por análises anteriores, decisões passadas e contextos históricos."""
+        results = self.collection.query(query_texts=[query], n_results=k)
+        return {
+            "source": "ChromaDB",
+            "status": "success",
+            "results": results.get('documents', [[]])[0] if results.get('documents') else []
+        }

@@ -19,6 +19,17 @@
 
 ---
 
+## 🔥 O Que Há de Novo (v2.0)
+
+A versão 2.0 traz recursos de nível enterprise para o ecossistema local:
+
+- **🚀 Visualizador de Orquestração**: Acompanhe em tempo real a troca de mensagens entre os agentes (`Router`, `Research`, `Analyzer`, `Memory`) através de um mapa de nós interativo e animado.
+- **🛡️ Vault Gatekeeper**: Sistema de segurança rigoroso. A interface e o dashboard permanecem bloqueados e monitorados até que todas as chaves de API sejam configuradas localmente.
+- **📡 Health Checks Nativos**: Monitoramento contínuo da saúde do backend FastAPI, com alertas visuais imediatos em caso de desconexão do Cérebro (Python).
+- **📊 LangSmith Tracing**: Rastreamento completo de execuções nativo, permitindo auditar cada pensamento, ferramenta e token utilizado pelos agentes.
+
+---
+
 ## 🏛️ Arquitetura (Clean Architecture)
 
 Desenvolvido sob os princípios da **Clean Architecture**, garantindo separação de preocupações e alta escalabilidade:
@@ -48,8 +59,8 @@ Esqueça a configuração manual de arquivos `.env`. Nosso fluxo de **First-Time
 
 ### 1. Clonar o Repositório
 ```bash
-git clone https://github.com/william-reis/traffic-agents.git
-cd traffic-agents
+git clone https://github.com/Xwiuu/Agents-Trafego.git
+cd Agents-Trafego
 ```
 
 ### 2. Backend (FastAPI)
@@ -72,14 +83,14 @@ npm run dev
 ```
 
 ### 4. Ativação (Vault)
-Acesse **[http://localhost:3000](http://localhost:3000)**. O sistema detectará que é sua primeira vez e abrirá o **Vault Access**. Insira suas chaves (Groq e Meta Ads) e o esquadrão estará online!
+Acesse **[http://localhost:3000](http://localhost:3000)**. O sistema detectará que é sua primeira vez e abrirá o **Vault Access**. Insira suas chaves (Groq, Meta Ads e LangChain) e o esquadrão estará online!
 
 ---
 
 ## 💎 Design System
 A interface foi construída com foco na experiência do usuário **Premium**:
 - **Estética Cyber/Dark**: Utilizando `bg-zinc-950` e acentos em `Orange-500`.
-- **Animações GSAP**: Micro-interações fluídas e transições de estado orquestradas.
+- **Animações GSAP & Framer Motion**: Micro-interações fluídas e visualização de fluxo de agentes.
 - **Dashboard Neural**: Monitoramento em tempo real do status de cada agente e métricas de processamento.
 
 ---
@@ -88,7 +99,9 @@ A interface foi construída com foco na experiência do usuário **Premium**:
 
 Um agradecimento especial à **Comunidade Coda** por inspirar este projeto.
 
-**Autor Principal:** [William Reis](https://github.com/william-reis)
+**Link Oficial:** [https://github.com/Xwiuu/Agents-Trafego](https://github.com/Xwiuu/Agents-Trafego)
+
+**Autor Principal:** [William Reis](https://github.com/Xwiuu)
 
 ---
 <div align="center">

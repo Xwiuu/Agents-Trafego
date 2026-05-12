@@ -36,7 +36,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onHome, onDashboard, onVault }) 
           </button>
 
           <a
-            href="https://github.com/william-reis/traffic-agents"
+            href="https://github.com/Xwiuu/Agents-Trafego"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center space-x-2 text-zinc-400 hover:text-orange-500 transition-colors duration-300 group"

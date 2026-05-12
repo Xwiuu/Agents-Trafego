@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Activity, Cpu, Database, Globe, Play, Pause, RotateCcw, Terminal, Zap, Server, Clock, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import gsap from 'gsap';
+import { OrchestrationFlow } from './OrchestrationFlow';
 
 interface AgentStatus {
   name: string;
@@ -145,6 +146,11 @@ export const DashboardOrchestration: React.FC<DashboardProps> = ({ onOpenTermina
               <span>Terminal</span>
             </button>
           </div>
+        </div>
+
+        {/* Orchestration Flow Visualizer */}
+        <div className="dash-section">
+            <OrchestrationFlow />
         </div>
 
         {/* Metrics */}

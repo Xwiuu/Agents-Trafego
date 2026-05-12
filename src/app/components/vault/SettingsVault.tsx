@@ -10,6 +10,7 @@ interface SettingsStatus {
   has_meta_app_secret: boolean;
   has_meta_access_token: boolean;
   has_ad_account_id: boolean;
+  has_langchain_key: boolean;
   is_fully_configured: boolean;
 }
 
@@ -19,6 +20,7 @@ interface SettingsForm {
   meta_app_secret: string;
   meta_access_token: string;
   ad_account_id: string;
+  langchain_api_key: string;
 }
 
 interface SettingsVaultProps {
@@ -38,6 +40,7 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
     meta_app_secret: '',
     meta_access_token: '',
     ad_account_id: '',
+    langchain_api_key: '',
   });
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
   const toastRef = useRef<HTMLDivElement>(null);
@@ -109,7 +112,7 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
       }
 
       showToast('Sistemas Online. Configurações armazenadas no Vault.', 'success');
-      setForm({ groq_api_key: '', meta_app_id: '', meta_app_secret: '', meta_access_token: '', ad_account_id: '' });
+      setForm({ groq_api_key: '', meta_app_id: '', meta_app_secret: '', meta_access_token: '', ad_account_id: '', langchain_api_key: '' });
       await fetchSettingsStatus();
       setTimeout(() => onSetupComplete(), 2000);
     } catch (err: any) {
@@ -161,6 +164,7 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
             </button>
             {[
               { label: 'Groq', active: status.has_groq_key },
+              { label: 'LangChain', active: status.has_langchain_key },
               { label: 'App ID', active: status.has_meta_app_id },
               { label: 'Secret', active: status.has_meta_app_secret },
               { label: 'Token', active: status.has_meta_access_token },
@@ -189,18 +193,34 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
               <BrainCircuit size={20} className="text-orange-500" />
               <h2 className="text-sm font-mono font-bold tracking-widest uppercase text-orange-500">Seção Cérebro</h2>
             </div>
-            <div>
-              <label className="block text-xs font-mono text-zinc-400 mb-2 uppercase tracking-wider">Groq API Key (Llama 3)</label>
-              <div className="relative">
-                <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
-                <input
-                  type="password"
-                  name="groq_api_key"
-                  value={form.groq_api_key}
-                  onChange={handleChange}
-                  className="w-full bg-zinc-950 text-white pl-10 pr-4 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
-                  placeholder="gsk_..."
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-mono text-zinc-400 mb-2 uppercase tracking-wider">Groq API Key (Llama 3)</label>
+                <div className="relative">
+                  <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
+                  <input
+                    type="password"
+                    name="groq_api_key"
+                    value={form.groq_api_key}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-950 text-white pl-10 pr-4 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
+                    placeholder="gsk_..."
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-zinc-400 mb-2 uppercase tracking-wider">LangChain API Key (Tracing)</label>
+                <div className="relative">
+                  <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
+                  <input
+                    type="password"
+                    name="langchain_api_key"
+                    value={form.langchain_api_key}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-950 text-white pl-10 pr-4 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
+                    placeholder="lsv2_..."
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -13,6 +13,7 @@ REQUIRED_KEYS = {
     "META_APP_SECRET": "meta_app_secret",
     "META_ACCESS_TOKEN": "meta_access_token",
     "AD_ACCOUNT_ID": "ad_account_id",
+    "LANGCHAIN_API_KEY": "langchain_api_key",
 }
 
 
@@ -29,6 +30,7 @@ class SettingsInput(BaseModel):
     meta_app_secret: Optional[str] = Field(None, description="Meta App Secret")
     meta_access_token: Optional[str] = Field(None, description="Meta Access Token")
     ad_account_id: Optional[str] = Field(None, description="Ad Account ID")
+    langchain_api_key: Optional[str] = Field(None, description="LangChain API Key (Tracing)")
 
 
 class SettingsStatus(BaseModel):
@@ -38,6 +40,7 @@ class SettingsStatus(BaseModel):
     has_meta_app_secret: bool = Field(False, description="Se o Meta App Secret está configurado")
     has_meta_access_token: bool = Field(False, description="Se o Meta Access Token está configurado")
     has_ad_account_id: bool = Field(False, description="Se o Ad Account ID está configurado")
+    has_langchain_key: bool = Field(False, description="Se a LangChain API Key está configurada")
     is_fully_configured: bool = Field(False, description="Se todas as chaves obrigatórias estão configuradas")
 
 
@@ -56,6 +59,7 @@ async def get_settings_status():
     status.has_meta_app_secret = bool(os.getenv("META_APP_SECRET", "").strip())
     status.has_meta_access_token = bool(os.getenv("META_ACCESS_TOKEN", "").strip())
     status.has_ad_account_id = bool(os.getenv("AD_ACCOUNT_ID", "").strip())
+    status.has_langchain_key = bool(os.getenv("LANGCHAIN_API_KEY", "").strip())
 
     status.is_fully_configured = all([
         status.has_groq_key,
@@ -91,12 +95,15 @@ async def update_settings(settings: SettingsInput):
         "META_APP_SECRET": settings.meta_app_secret,
         "META_ACCESS_TOKEN": settings.meta_access_token,
         "AD_ACCOUNT_ID": settings.ad_account_id,
+        "LANGCHAIN_API_KEY": settings.langchain_api_key,
     }
 
     try:
         for key, value in updates.items():
             if value is not None and value.strip():
                 set_key(env_path, key, value.strip())
+                if key == "LANGCHAIN_API_KEY":
+                    set_key(env_path, "LANGCHAIN_TRACING_V2", "true")
 
         # Recarga o .env para aplicar imediatamente no processo atual
         load_dotenv(dotenv_path=env_path, override=True)
