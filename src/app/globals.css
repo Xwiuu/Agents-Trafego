@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-terminal-dark: #0f0f1a;
+  --color-terminal-green: #00ff41;
+  --color-terminal-blue: #00bfff;
+  --color-terminal-purple: #8000ff;
+}
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-50 antialiased selection:bg-green-500/30 selection:text-green-200;
+  }
+}

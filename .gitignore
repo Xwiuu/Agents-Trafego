@@ -1,6 +1,50 @@
+# Dependencies
+node_modules/
+.next/
+out/
+build/
 venv/
-.env
+env/
+ENV/
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.hypotheses/
+.pytest_cache/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env*
+
+# Databases & Vector Stores
 chroma_db/
+*.db
+*.sqlite3
+
+# OS Metadata
+.DS_Store
+Thumbs.db
+
+# Project Specific
 report_last_week.json
+.vscode/
+.idea/

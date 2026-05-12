@@ -1,0 +1,52 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Dict
+from domain.models import ChatMessage, AgentResponse
+from application.use_cases.process_message import process_message
+from application.use_cases.route_message import route_message
+from interfaces.settings import router as settings_router
+
+app = FastAPI(title="Meta Ads Agent API", version="2.0.0")
+
+# CORS para permitir requisições do Next.js (localhost:3000)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Registrar router do Settings Vault
+app.include_router(settings_router)
+
+
+@app.post("/chat", response_model=AgentResponse)
+async def chat_endpoint(message: ChatMessage):
+    """
+    Endpoint para enviar mensagens ao sistema LangGraph
+    """
+    if not message.message.strip():
+        raise HTTPException(status_code=400, detail="Mensagem não pode ser vazia")
+    
+    try:
+        response = await process_message(message)
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro no processamento: {str(e)}")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+@app.post("/route", response_model=List[str])
+async def route_endpoint(message: ChatMessage):
+    """
+    Endpoint para rotear mensagens para as plataformas apropriadas
+    """
+    try:
+        platforms = route_message(message.message)
+        return [p.value for p in platforms]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro no roteamento: {str(e)}")

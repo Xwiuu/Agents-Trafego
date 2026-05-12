@@ -1,99 +1,96 @@
-# 🚀 Meta Ads Multi-Agent System (V4 Stable)
+<div align="center">
 
-Um sistema inteligente de automação e análise de Meta Ads baseado em uma arquitetura de **5 Agentes Especializados** utilizando **LangGraph**, **Groq (Llama 3.1 8B)** e **ChromaDB**. Este projeto foi desenhado para profissionais de tráfego pago que buscam transformar dados brutos em estratégias acionáveis com memória de longo prazo.
+# 🚀 OMNICHANNEL TRAFFIC AI SQUAD
+### The Open Source Multi-Agent Ecosystem for High-Performance Traffic Management
 
----
-
-## 🧠 A Arquitetura: O Time de Especialistas
-
-O sistema opera como um squad de marketing digital, onde cada agente possui responsabilidades e ferramentas únicas:
-
-1.  **Router (O Capitão) 👨‍✈️**: Analisa a pergunta do usuário e define o fluxo de execução. Ele decide quem deve agir e garante que o processo termine de forma eficiente.
-2.  **Research (O Pesquisador) 🔍**: Conecta-se à **Meta Ads API** para buscar dados reais, consulta o histórico no **ChromaDB** e traz benchmarks do mercado.
-3.  **Analyzer (O Analista) 📊**: Realiza a "escovação de bits". Ele identifica padrões matemáticos, tendências de queda/ascensão e detecta anomalias (como picos de gasto sem conversão).
-4.  **Strategist (O Estrategista) 💡**: Transforma a análise em planos práticos. Define prioridades baseadas em ROI vs Risco e sugere ações como escalonamento ou troca de criativos.
-5.  **Memory Keeper (O Guardião) 📚**: Responsável pela inteligência de longo prazo. Salva os aprendizados de cada ciclo no banco de dados vetorial para que o sistema fique "mais esperto" a cada consulta.
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-v0.100+-05998b?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![LangChain](https://img.shields.io/badge/LangGraph-Orchestration-1C3C3C?style=for-the-badge&logo=langchain)](https://langchain.com/)
+[![Groq](https://img.shields.io/badge/Groq-Llama_3-f55036?style=for-the-badge&logo=groq)](https://groq.com/)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_Store-00d1b2?style=for-the-badge)](https://www.trychroma.com/)
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+**Omnichannel Traffic AI Squad** é uma plataforma de orquestração multi-agente projetada para revolucionar a gestão de tráfego pago. Rodando **100% localmente**, o sistema utiliza inteligência artificial de última geração para analisar, otimizar e escalar campanhas em Meta, Google, TikTok, Pinterest e LinkedIn.
 
-*   **LangGraph**: Orquestração de estado e agentes em grafo.
-*   **Groq (Llama 3.1 8B)**: Processamento de linguagem natural ultra-rápido.
-*   **Meta Business SDK**: Integração oficial com a API de anúncios.
-*   **ChromaDB**: Banco de dados vetorial para memória persistente.
-*   **HuggingFace Embeddings**: Para representação vetorial semântica de alta qualidade.
+[Explore o Dashboard](#-arquitetura) • [Instalação Rápida](#-guia-passo-a-passo) • [Contribua](#-créditos)
+
+</div>
 
 ---
 
-## ⚙️ Configuração e Instalação
+## 🏛️ Arquitetura (Clean Architecture)
+
+Desenvolvido sob os princípios da **Clean Architecture**, garantindo separação de preocupações e alta escalabilidade:
+
+*   **Domain**: Entidades de negócio, modelos core e lógica de tráfego agnóstica a frameworks.
+*   **Application**: Casos de uso e orquestração do Grafo Neural (LangGraph) que coordena o squad de agentes.
+*   **Infrastructure**: Clientes de API (Ads Platforms), Banco Vetorial (ChromaDB) e integrações de LLM (Groq).
+*   **Interfaces**: API REST de alta performance (FastAPI) e UI Cyber-Premium (Next.js).
+
+---
+
+## 🤖 O Squad de Agentes
+
+Nosso ecossistema opera através de um time de especialistas coordenados:
+
+- **Router (O Capitão)**: Orquestração neural e roteamento inteligente.
+- **Research (O Pesquisador)**: Extração de dados via Graph APIs e análise de benchmarks.
+- **Analyzer (O Analista)**: Detecção de anomalias e escovação de métricas de performance.
+- **Strategist (O Estrategista)**: Geração de planos de ação focados em ROI e Escala.
+- **Memory Keeper (O Guardião)**: Gestão de memória semântica e histórico de aprendizado.
+
+---
+
+## 🛠️ Guia Passo a Passo (Setup Local)
+
+Esqueça a configuração manual de arquivos `.env`. Nosso fluxo de **First-Time Setup (Vault)** cuida de tudo através da interface.
 
 ### 1. Clonar o Repositório
 ```bash
-git clone https://github.com/seu-usuario/meta-ads-agent.git
-cd meta-ads-agent
+git clone https://github.com/william-reis/traffic-agents.git
+cd traffic-agents
 ```
 
-### 2. Configurar o Ambiente Virtual
+### 2. Backend (FastAPI)
 ```bash
+# Crie e ative o ambiente virtual
 python -m venv venv
-# No Windows:
-.\venv\Scripts\activate
-# No Linux/Mac:
-source venv/bin/activate
-```
+.\venv\Scripts\activate  # Windows
+source venv/bin/activate  # Mac/Linux
 
-### 3. Instalar Dependências
-```bash
+# Instale as dependências e inicie o servidor
 pip install -r requirements.txt
+python interfaces/api.py
 ```
 
-### 4. Variáveis de Ambiente (.env)
-Crie um arquivo `.env` na raiz do projeto com as seguintes chaves:
-```env
-META_ACCESS_TOKEN=seu_token_aqui
-META_APP_ID=seu_app_id
-META_APP_SECRET=seu_app_secret
-AD_ACCOUNT_ID=act_sua_conta
-GROQ_API_KEY=sua_chave_groq
-```
-
----
-
-## 🚀 Como Usar
-
-Basta executar o script principal:
+### 3. Frontend (Next.js)
 ```bash
-python main.py
+# Em um novo terminal
+npm install
+npm run dev
 ```
 
-### Exemplo de Perguntas:
-*   "Como está a performance da última semana e o que devo otimizar?"
-*   "Compare meus resultados atuais com os aprendizados da campanha de Black Friday anterior."
-*   "Gere uma estratégia de escala para as campanhas que estão com ROAS acima de 3."
+### 4. Ativação (Vault)
+Acesse **[http://localhost:3000](http://localhost:3000)**. O sistema detectará que é sua primeira vez e abrirá o **Vault Access**. Insira suas chaves (Groq e Meta Ads) e o esquadrão estará online!
 
 ---
 
-## 🛡️ Diferenciais Técnicos (Blindagem)
-
-*   **Rota Determinística**: O sistema encerra automaticamente após o Memory Keeper, evitando loops infinitos e desperdício de tokens.
-*   **Context Trimming**: Função inteligente que limpa o histórico de mensagens para manter a IA rápida e evitar erros de limite de contexto.
-*   **Resiliência por Agente**: Cada agente possui tratamento de erros individualizado; se um falha, o sistema reporta o erro e continua disponível para a próxima tarefa.
-
----
-
-## 🤝 Contribuições
-
-Este é um projeto Open Source! Sinta-se à vontade para:
-1. Abrir **Issues** com bugs ou sugestões.
-2. Enviar **Pull Requests** com novos agentes (ex: um Agente Copywriter ou Agente de Relatórios PDF).
-3. Melhorar os prompts dos agentes existentes.
+## 💎 Design System
+A interface foi construída com foco na experiência do usuário **Premium**:
+- **Estética Cyber/Dark**: Utilizando `bg-zinc-950` e acentos em `Orange-500`.
+- **Animações GSAP**: Micro-interações fluídas e transições de estado orquestradas.
+- **Dashboard Neural**: Monitoramento em tempo real do status de cada agente e métricas de processamento.
 
 ---
 
-## 📄 Licença
+## ❤️ Créditos
 
-Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
+Um agradecimento especial à **Comunidade Coda** por inspirar este projeto.
+
+**Autor Principal:** [William Reis](https://github.com/william-reis)
 
 ---
-*Desenvolvido para a comunidade de automação e tráfego pago.* 🚀
+<div align="center">
+  <sub>Open Source with Love 💚. This project is intended for educational and performance optimization purposes.</sub>
+</div>
