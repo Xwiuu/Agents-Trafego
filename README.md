@@ -31,6 +31,18 @@ A versão 2.0 traz recursos de nível enterprise para o ecossistema local:
 
 ---
 
+## 🔥 O Que Há de Novo (v2.1) - Robustez Total
+
+A versão 2.1 introduz a camada de execução autônoma e reforço de infraestrutura:
+
+- **🛠️ Agente Operador (Action Layer)**: O esquadrão agora não apenas analisa, mas executa. O novo Agente Operador possui ferramentas para pausar campanhas e ajustar orçamentos diretamente no Meta Ads.
+- **📈 Dashboard 2.0 & Hub**: Interface reformulada com o novo "Relatório Matinal", exibindo um feed persistente de ações autônomas e KPIs de performance global.
+- **🛡️ Resiliência com Tenacity**: Implementação de políticas de re-tentativa (retries) com backoff exponencial em todas as chamadas críticas de API e LLM.
+- **🔒 Auditoria & Mascaramento**: Sistema de logs de auditoria persistentes e mascaramento automático de PII (Personally Identifiable Information) e chaves de API nos logs do sistema.
+- **🎨 Nova Landing Page (Hub)**: Uma porta de entrada premium que apresenta a arquitetura do sistema e o status de conexão com o backend em tempo real.
+
+---
+
 ## 🏛️ Arquitetura (Clean Architecture)
 
 Desenvolvido sob os princípios da **Clean Architecture**, garantindo separação de preocupações e alta escalabilidade:
@@ -49,7 +61,7 @@ Nosso ecossistema opera através de um time de especialistas coordenados:
 - **Router (O Capitão)**: Orquestração neural e roteamento inteligente.
 - **Research (O Pesquisador)**: Extração de dados via Graph APIs e análise de benchmarks.
 - **Analyzer (O Analista)**: Detecção de anomalias e escovação de métricas de performance.
-- **Strategist (O Estrategista)**: Geração de planos de ação focados em ROI e Escala.
+- **Operator (O Executor)**: Execução de ações em tempo real (Pausar, Alterar Orçamento).
 - **Memory Keeper (O Guardião)**: Gestão de memória semântica e histórico de aprendizado.
 
 ---
