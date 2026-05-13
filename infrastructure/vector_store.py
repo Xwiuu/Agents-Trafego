@@ -1,3 +1,4 @@
+import os
 import json
 from datetime import datetime
 from typing import Dict, List, Any
@@ -7,6 +8,14 @@ from langchain_huggingface import HuggingFaceEmbeddings
 class VectorStore:
     def __init__(self, persist_directory: str = "./chroma_db"):
         self.embeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        
+        # Proteção da Memória: Criar arquivo de aviso se a pasta existir ou for criada
+        os.makedirs(persist_directory, exist_ok=True)
+        readme_path = os.path.join(persist_directory, "LEIA_ME_IMPORTANTE.txt")
+        if not os.path.exists(readme_path):
+            with open(readme_path, "w", encoding="utf-8") as f:
+                f.write("AVISO: NUNCA EXCLUA ESTA PASTA. Ela contém a memória vetorial de longo prazo do seu esquadrão de agentes. Excluí-la apagará todo o histórico de aprendizado.")
+
         self.chroma_client = chromadb.PersistentClient(path=persist_directory)
         self.collection = self.chroma_client.get_or_create_collection(
             name="meta_ads_intelligence_v5",
@@ -47,3 +56,11 @@ class VectorStore:
             "status": "success",
             "results": results.get('documents', [[]])[0] if results.get('documents') else []
         }
+
+    def clear_all_memory(self):
+        """Remove todos os dados da coleção de inteligência do ChromaDB."""
+        # Obtém todos os IDs
+        all_ids = self.collection.get()["ids"]
+        if all_ids:
+            self.collection.delete(ids=all_ids)
+        return True

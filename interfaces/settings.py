@@ -44,12 +44,8 @@ class SettingsStatus(BaseModel):
     is_fully_configured: bool = Field(False, description="Se todas as chaves obrigatórias estão configuradas")
 
 
-@router.get("", response_model=SettingsStatus)
-async def get_settings_status():
-    """
-    Verifica quais chaves essenciais já estão configuradas no .env.
-    Nunca retorna as chaves em texto plano, apenas status booleano.
-    """
+def _get_current_status() -> SettingsStatus:
+    """Helper to read .env and populate SettingsStatus."""
     env_path = _get_env_path()
     load_dotenv(dotenv_path=env_path, override=True)
 
@@ -68,16 +64,40 @@ async def get_settings_status():
         status.has_meta_access_token,
         status.has_ad_account_id,
     ])
-
     return status
+
+
+@router.get("", response_model=SettingsStatus)
+async def get_settings_status():
+    """
+    Verifica quais chaves essenciais já estão configuradas no .env.
+    Nunca retorna as chaves em texto plano, apenas status booleano.
+    """
+    return _get_current_status()
 
 
 @router.post("")
 async def update_settings(settings: SettingsInput):
     """
     Recebe as chaves do usuário e escreve no arquivo .env.
-    Apenas chaves presentes (não-vazias) são escritas.
+    Retorna o status atualizado de todas as chaves.
     """
+    # Validação Blindada: Impedir chaves vazias para campos essenciais
+    essential_fields = {
+        "Groq API Key": settings.groq_api_key,
+        "Meta App ID": settings.meta_app_id,
+        "Meta App Secret": settings.meta_app_secret,
+        "Meta Access Token": settings.meta_access_token,
+        "Ad Account ID": settings.ad_account_id,
+    }
+    
+    missing = [name for name, val in essential_fields.items() if not val or not val.strip()]
+    if missing:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Falha de Segurança: Os seguintes campos são obrigatórios: {', '.join(missing)}"
+        )
+
     env_path = _get_env_path()
 
     # Garantir que o arquivo .env existe
@@ -108,6 +128,13 @@ async def update_settings(settings: SettingsInput):
         # Recarga o .env para aplicar imediatamente no processo atual
         load_dotenv(dotenv_path=env_path, override=True)
 
-        return {"status": "success", "message": "Configurações salvas com sucesso. Sistemas atualizados."}
+        # Retorna o status atualizado
+        new_status = _get_current_status()
+
+        return {
+            "status": "success", 
+            "message": "Configurações salvas com sucesso. Sistemas atualizados.",
+            "data": new_status.model_dump()
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao salvar configurações: {str(e)}")

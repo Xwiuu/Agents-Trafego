@@ -25,6 +25,7 @@ A versão 2.0 traz recursos de nível enterprise para o ecossistema local:
 
 - **🚀 Visualizador de Orquestração**: Acompanhe em tempo real a troca de mensagens entre os agentes (`Router`, `Research`, `Analyzer`, `Memory`) através de um mapa de nós interativo e animado.
 - **🛡️ Vault Gatekeeper**: Sistema de segurança rigoroso. A interface e o dashboard permanecem bloqueados e monitorados até que todas as chaves de API sejam configuradas localmente.
+- **🔍 Smart Vault Feedback**: Interface de configuração que analisa e valida individualmente o status de cada chave (Groq, Meta, LangChain) em tempo real, garantindo que o esquadrão só entre em ação com 100% dos recursos operacionais.
 - **📡 Health Checks Nativos**: Monitoramento contínuo da saúde do backend FastAPI, com alertas visuais imediatos em caso de desconexão do Cérebro (Python).
 - **📊 LangSmith Tracing**: Rastreamento completo de execuções nativo, permitindo auditar cada pensamento, ferramenta e token utilizado pelos agentes.
 

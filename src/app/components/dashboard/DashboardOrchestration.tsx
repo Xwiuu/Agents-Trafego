@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, Cpu, Database, Globe, Play, Pause, RotateCcw, Terminal, Zap, Server, Clock, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Activity, Cpu, Database, Globe, Play, Pause, RotateCcw, Terminal, Zap, Server, Clock, TrendingUp, BrainCircuit, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import gsap from 'gsap';
 import { OrchestrationFlow } from './OrchestrationFlow';
 
@@ -26,8 +26,7 @@ const AGENTS: AgentStatus[] = [
   { name: 'Router', status: 'online', lastPing: '2s ago', activeTasks: 0, icon: <Server size={16} /> },
   { name: 'Research', status: 'online', lastPing: '5s ago', activeTasks: 0, icon: <Database size={16} /> },
   { name: 'Analyzer', status: 'online', lastPing: '1s ago', activeTasks: 0, icon: <TrendingUp size={16} /> },
-  { name: 'Strategist', status: 'online', lastPing: '3s ago', activeTasks: 0, icon: <Zap size={16} /> },
-  { name: 'MemoryKeeper', status: 'online', lastPing: '7s ago', activeTasks: 0, icon: <Database size={16} /> },
+  { name: 'Memory', status: 'online', lastPing: '7s ago', activeTasks: 0, icon: <BrainCircuit size={16} /> },
 ];
 
 interface DashboardProps {
@@ -37,19 +36,43 @@ interface DashboardProps {
 export const DashboardOrchestration: React.FC<DashboardProps> = ({ onOpenTerminal }) => {
   const [agents, setAgents] = useState<AgentStatus[]>(AGENTS);
   const [metrics, setMetrics] = useState<SystemMetrics>({
-    apiCalls: 1247,
-    memoryUsage: 42,
+    apiCalls: 0,
+    memoryUsage: 0,
     activeAgents: 5,
-    uptime: '2d 14h',
+    uptime: 'Iniciando...',
   });
-  const [logs, setLogs] = useState<string[]>([
-    '[SYS] Router online, awaiting commands...',
-    '[SYS] MemoryKeeper loaded with ChromaDB v1.4',
-    '[SYS] Meta API client initialized',
-  ]);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [activeAgent, setActiveAgent] = useState<string>('Router');
+  const [isMemoryActive, setIsMemoryActive] = useState<boolean>(true);
   const [isAutoRefresh, setIsAutoRefresh] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch initial data on mount
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/logs`);
+        if (res.ok) {
+          const data = await res.json();
+          setLogs(data.logs);
+          setActiveAgent(data.active_agent);
+          setIsMemoryActive(data.memory_active);
+          if (data.metrics) {
+            setMetrics(prev => ({
+              ...prev,
+              apiCalls: data.metrics.api_calls,
+              uptime: data.metrics.uptime,
+              memoryUsage: data.metrics.memory_usage,
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao buscar dados iniciais:', err);
+      }
+    };
+    fetchInitialData();
+  }, []);
 
   useEffect(() => {
     if (dashboardRef.current) {
@@ -70,20 +93,52 @@ export const DashboardOrchestration: React.FC<DashboardProps> = ({ onOpenTermina
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isAutoRefresh) {
-      interval = setInterval(() => {
-        // Simulate metrics updates
-        setMetrics((prev) => ({
-          ...prev,
-          apiCalls: prev.apiCalls + Math.floor(Math.random() * 5),
-          memoryUsage: Math.min(100, Math.max(30, prev.memoryUsage + (Math.random() - 0.5) * 2)),
-        }));
+      interval = setInterval(async () => {
+        // Fetch real logs and active agent
+        try {
+          const res = await fetch(`${API_URL}/api/logs`);
+          if (res.ok) {
+            const data = await res.json();
+            setLogs(data.logs);
+            setActiveAgent(data.active_agent);
+            setIsMemoryActive(data.memory_active);
+            
+            // Update Agents Status dynamically
+            setAgents(prev => prev.map(agent => ({
+              ...agent,
+              status: agent.name.toLowerCase() === data.active_agent.toLowerCase() ? 'processing' : 'online',
+              activeTasks: agent.name.toLowerCase() === data.active_agent.toLowerCase() ? 1 : 0
+            })));
+            
+            // Update real metrics
+            if (data.metrics) {
+              setMetrics(prev => ({
+                ...prev,
+                apiCalls: data.metrics.api_calls,
+                uptime: data.metrics.uptime,
+                memoryUsage: data.metrics.memory_usage,
+              }));
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao buscar logs:', err);
+        }
       }, 2000);
     }
     return () => clearInterval(interval);
   }, [isAutoRefresh]);
 
-  const handleResetMemory = () => {
-    setLogs((prev) => [...prev, `[SYS] Memory Keeper reset initiated...`, `[SYS] ChromaDB collection cleared.`]);
+  const handleResetMemory = async () => {
+    if (!confirm('Tem certeza que deseja apagar toda a memória do esquadrão?')) return;
+    
+    try {
+      const res = await fetch(`${API_URL}/api/memory/reset`, { method: 'POST' });
+      if (res.ok) {
+        setLogs((prev) => [...prev, `[SYS] Memory Keeper reset initiated...`, `[SYS] ChromaDB collection cleared.`]);
+      }
+    } catch (err) {
+      console.error('Erro ao resetar memória:', err);
+    }
   };
 
   const getStatusColor = (status: AgentStatus['status']) => {
@@ -122,7 +177,16 @@ export const DashboardOrchestration: React.FC<DashboardProps> = ({ onOpenTermina
               <Activity size={24} className="text-orange-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight">ORQUESTRAÇÃO</h1>
+              <div className="flex items-center space-x-3">
+                <h1 className="text-2xl font-black tracking-tight">ORQUESTRAÇÃO</h1>
+                <span className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-tighter transition-colors ${
+                  isMemoryActive 
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
+                    : 'bg-red-500/10 border-red-500/20 text-red-500'
+                }`}>
+                  Memória Vetorial: {isMemoryActive ? 'Ativa' : 'Desativada'} (chroma_db)
+                </span>
+              </div>
               <p className="text-zinc-400 font-mono text-xs tracking-widest uppercase">Painel de Controle do Esquadrão</p>
             </div>
           </div>
@@ -150,7 +214,7 @@ export const DashboardOrchestration: React.FC<DashboardProps> = ({ onOpenTermina
 
         {/* Orchestration Flow Visualizer */}
         <div className="dash-section">
-            <OrchestrationFlow />
+            <OrchestrationFlow activeNode={activeAgent} />
         </div>
 
         {/* Metrics */}

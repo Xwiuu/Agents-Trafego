@@ -91,12 +91,40 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
     }
   };
 
+  const StatusBadge = ({ active }: { active: boolean | undefined }) => (
+    <div className={`flex items-center space-x-1 px-2 py-0.5 rounded border text-[10px] font-mono font-bold uppercase tracking-tighter ${
+      active 
+        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' 
+        : 'bg-orange-500/10 border-orange-500/30 text-orange-500'
+    }`}>
+      {active ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+      <span>{active ? 'Conectado' : 'Pendente'}</span>
+    </div>
+  );
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validação Blindada no Frontend
+    const requiredFields = [
+      { key: 'groq_api_key', label: 'Groq API Key' },
+      { key: 'meta_app_id', label: 'App ID' },
+      { key: 'meta_app_secret', label: 'App Secret' },
+      { key: 'meta_access_token', label: 'Access Token' },
+      { key: 'ad_account_id', label: 'Ad Account ID' },
+    ];
+
+    const missing = requiredFields.filter(f => !form[f.key as keyof SettingsForm]?.trim());
+
+    if (missing.length > 0) {
+      showToast(`ERRO: Preencha todos os campos obrigatórios: ${missing.map(f => f.label).join(', ')}`, 'error');
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -111,10 +139,19 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
         throw new Error(err.detail || 'Erro ao salvar configurações');
       }
 
-      showToast('Sistemas Online. Configurações armazenadas no Vault.', 'success');
-      setForm({ groq_api_key: '', meta_app_id: '', meta_app_secret: '', meta_access_token: '', ad_account_id: '', langchain_api_key: '' });
-      await fetchSettingsStatus();
-      setTimeout(() => onSetupComplete(), 2000);
+      const result = await res.json();
+      const updatedStatus = result.data as SettingsStatus;
+      
+      // Atualiza o estado individual de cada input imediatamente
+      setStatus(updatedStatus);
+
+      if (updatedStatus.is_fully_configured) {
+        showToast('Sistemas Online. Configurações armazenadas no Vault.', 'success');
+        setForm({ groq_api_key: '', meta_app_id: '', meta_app_secret: '', meta_access_token: '', ad_account_id: '', langchain_api_key: '' });
+        setTimeout(() => onSetupComplete(), 2000);
+      } else {
+        showToast('Configurações parciais salvas. Algumas chaves ainda estão pendentes.', 'error');
+      }
     } catch (err: any) {
       showToast(err.message || 'Erro ao conectar. Verifique a porta do backend.', 'error');
     } finally {
@@ -195,7 +232,10 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-mono text-zinc-400 mb-2 uppercase tracking-wider">Groq API Key (Llama 3)</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">Groq API Key (Llama 3)</label>
+                  <StatusBadge active={status?.has_groq_key} />
+                </div>
                 <div className="relative">
                   <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
                   <input
@@ -209,7 +249,10 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-mono text-zinc-400 mb-2 uppercase tracking-wider">LangChain API Key (Tracing)</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">LangChain API Key (Tracing)</label>
+                  <StatusBadge active={status?.has_langchain_key} />
+                </div>
                 <div className="relative">
                   <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
                   <input
@@ -233,7 +276,10 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-mono text-zinc-400 mb-2 uppercase tracking-wider">App ID</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">App ID</label>
+                  <StatusBadge active={status?.has_meta_app_id} />
+                </div>
                 <div className="relative">
                   <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
                   <input
@@ -247,7 +293,10 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-mono text-zinc-400 mb-2 uppercase tracking-wider">App Secret</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">App Secret</label>
+                  <StatusBadge active={status?.has_meta_app_secret} />
+                </div>
                 <div className="relative">
                   <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
                   <input
@@ -263,7 +312,10 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-mono text-zinc-400 mb-2 uppercase tracking-wider">Access Token</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">Access Token</label>
+                  <StatusBadge active={status?.has_meta_access_token} />
+                </div>
                 <div className="relative">
                   <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
                   <input
@@ -277,7 +329,10 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-mono text-zinc-400 mb-2 uppercase tracking-wider">Ad Account ID</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">Ad Account ID</label>
+                  <StatusBadge active={status?.has_ad_account_id} />
+                </div>
                 <div className="relative">
                   <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
                   <input
@@ -297,7 +352,7 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-zinc-800 text-black font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-all duration-300 group"
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-all duration-300 group"
           >
             {isSaving ? (
               <>

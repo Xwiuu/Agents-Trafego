@@ -42,22 +42,11 @@ const Node: React.FC<NodeProps> = ({ label, icon, isActive }) => {
   );
 };
 
-export const OrchestrationFlow: React.FC = () => {
-  const [activeNode, setActiveNode] = useState<string>('Router');
+interface OrchestrationFlowProps {
+  activeNode: string;
+}
 
-  // Simulation of agent switching
-  useEffect(() => {
-    const nodes = ['Router', 'Research', 'Analyzer', 'Memory'];
-    let currentIndex = 0;
-    
-    const interval = setInterval(() => {
-      currentIndex = (currentIndex + 1) % nodes.length;
-      setActiveNode(nodes[currentIndex]);
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
-
+export const OrchestrationFlow: React.FC<OrchestrationFlowProps> = ({ activeNode = 'Router' }) => {
   const nodes = [
     { id: 'Router', label: 'Router', icon: <Server size={32} /> },
     { id: 'Research', label: 'Research', icon: <Database size={32} /> },

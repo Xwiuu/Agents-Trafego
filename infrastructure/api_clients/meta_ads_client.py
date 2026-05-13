@@ -7,37 +7,43 @@ from facebook_business.adobjects.adsinsights import AdsInsights
 from domain.entities import Campaign, Metrics
 from domain.enums import PlatformEnum
 
+from infrastructure.logger import global_logs
+
 class MetaAdsClient:
-    def __init__(self):
-        self.app_id = os.getenv("META_APP_ID")
-        self.app_secret = os.getenv("META_APP_SECRET")
-        self.access_token = os.getenv("META_ACCESS_TOKEN")
-        self.ad_account_id = os.getenv("AD_ACCOUNT_ID")
+    def _init_api(self):
+        """Inicializa ou atualiza a conexão com a API da Meta usando as chaves atuais do .env."""
+        global_logs.increment_api_calls() # Rastreia a tentativa de conexão
+        app_id = os.getenv("META_APP_ID")
+        app_secret = os.getenv("META_APP_SECRET")
+        access_token = os.getenv("META_ACCESS_TOKEN")
+        ad_account_id = os.getenv("AD_ACCOUNT_ID")
         
-        if not all([self.app_id, self.app_secret, self.access_token, self.ad_account_id]):
-            print("Warning: Meta Ads credentials not fully configured in environment variables.")
+        if not all([app_id, app_secret, access_token, ad_account_id]):
+            raise ValueError("⚠️ [Meta API] Credenciais incompletas. Configure o Vault.")
         
         try:
-            FacebookAdsApi.init(self.app_id, self.app_secret, self.access_token)
-            self.account = AdAccount(f"act_{self.ad_account_id}")
+            FacebookAdsApi.init(app_id, app_secret, access_token)
+            # Retorna a conta configurada
+            return AdAccount(f"act_{ad_account_id}")
         except Exception as e:
-            print(f"Error initializing Meta Ads API: {e}")
+            raise Exception(f"Erro ao conectar na Meta API: {str(e)}")
 
     def get_active_campaigns(self) -> List[Campaign]:
         """Busca campanhas com status 'ACTIVE' e mapeia para a entidade de domínio."""
-        fields = [
-            MetaCampaign.Field.id,
-            MetaCampaign.Field.name,
-            MetaCampaign.Field.status,
-            MetaCampaign.Field.daily_budget,
-            MetaCampaign.Field.lifetime_budget,
-        ]
-        params = {
-            'effective_status': ['ACTIVE'],
-        }
-        
         try:
-            meta_campaigns = self.account.get_campaigns(fields=fields, params=params)
+            account = self._init_api()
+            fields = [
+                MetaCampaign.Field.id,
+                MetaCampaign.Field.name,
+                MetaCampaign.Field.status,
+                MetaCampaign.Field.daily_budget,
+                MetaCampaign.Field.lifetime_budget,
+            ]
+            params = {
+                'effective_status': ['ACTIVE'],
+            }
+            
+            meta_campaigns = account.get_campaigns(fields=fields, params=params)
             campaigns = []
             for c in meta_campaigns:
                 # Meta retorna orçamentos em centavos (dividir por 100)
@@ -60,17 +66,18 @@ class MetaAdsClient:
 
     def get_campaign_insights(self, campaign_id: str) -> Optional[Metrics]:
         """Busca métricas de performance para uma campanha específica."""
-        fields = [
-            AdsInsights.Field.impressions,
-            AdsInsights.Field.clicks,
-            AdsInsights.Field.spend,
-            AdsInsights.Field.inline_link_click_ctr,
-            AdsInsights.Field.cost_per_inline_link_click,
-            AdsInsights.Field.purchase_roas,
-            AdsInsights.Field.actions,
-        ]
-        
         try:
+            self._init_api() # Garante que o FacebookAdsApi está inicializado
+            fields = [
+                AdsInsights.Field.impressions,
+                AdsInsights.Field.clicks,
+                AdsInsights.Field.spend,
+                AdsInsights.Field.inline_link_click_ctr,
+                AdsInsights.Field.cost_per_inline_link_click,
+                AdsInsights.Field.purchase_roas,
+                AdsInsights.Field.actions,
+            ]
+            
             campaign = MetaCampaign(campaign_id)
             insights = campaign.get_insights(fields=fields)
             

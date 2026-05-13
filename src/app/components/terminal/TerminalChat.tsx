@@ -26,6 +26,17 @@ export const TerminalChat: React.FC<TerminalChatProps> = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isLoading && loadingRef.current) {
+      gsap.fromTo(
+        loadingRef.current,
+        { opacity: 0.4 },
+        { opacity: 1, duration: 0.8, repeat: -1, yoyo: true, ease: 'power1.inOut' }
+      );
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -136,9 +147,9 @@ export const TerminalChat: React.FC<TerminalChatProps> = ({ onBack }) => {
           </div>
         ))}
         {isLoading && (
-          <div className="flex items-center space-x-2 text-zinc-500 text-xs">
+          <div ref={loadingRef} className="flex items-center space-x-2 text-orange-500/80 text-xs font-bold border-l-2 border-orange-500 pl-3 py-1 bg-orange-500/5">
             <Loader2 size={14} className="animate-spin" />
-            <span>Processando com Groq (Llama 3)...</span>
+            <span className="tracking-widest uppercase">Processando com Groq & LangGraph...</span>
           </div>
         )}
         <div ref={messagesEndRef} />
