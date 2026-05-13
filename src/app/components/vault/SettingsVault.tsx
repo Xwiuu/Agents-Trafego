@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, KeyRound, BrainCircuit, Globe, ArrowRight, Lock, CheckCircle2, AlertCircle, Zap } from 'lucide-react';
+import { Shield, KeyRound, BrainCircuit, Globe, ArrowRight, Lock, CheckCircle2, Zap } from 'lucide-react';
 import gsap from 'gsap';
 
 interface SettingsStatus {
@@ -97,7 +97,7 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' 
         : 'bg-orange-500/10 border-orange-500/30 text-orange-500'
     }`}>
-      {active ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+      {active ? <CheckCircle2 size={10} /> : <Lock size={10} />}
       <span>{active ? 'Conectado' : 'Pendente'}</span>
     </div>
   );
@@ -379,7 +379,7 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
               : 'bg-red-950/90 border-red-500/30 text-red-400'
           }`}
         >
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <Zap size={18} />}
           <span>{toast.message}</span>
         </div>
       )}

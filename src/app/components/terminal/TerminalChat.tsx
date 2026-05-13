@@ -12,7 +12,7 @@ interface Message {
 }
 
 interface TerminalChatProps {
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -110,9 +110,11 @@ export const TerminalChat: React.FC<TerminalChatProps> = ({ onBack }) => {
     <div className="flex flex-col h-full bg-black">
       <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-900 bg-zinc-950/50">
         <div className="flex items-center space-x-4">
-          <button onClick={onBack} className="flex items-center text-zinc-400 hover:text-orange-500 transition-colors">
-            <ArrowLeft size={16} />
-          </button>
+          {onBack && (
+            <button onClick={onBack} className="flex items-center text-zinc-400 hover:text-orange-500 transition-colors">
+              <ArrowLeft size={16} />
+            </button>
+          )}
           <div className="flex items-center space-x-2">
             <Terminal size={16} className="text-orange-500" />
             <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest">Neural Terminal v1.0.4</span>

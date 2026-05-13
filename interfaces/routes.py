@@ -32,6 +32,26 @@ app.add_middleware(
 app.include_router(settings_router)
 
 
+import json
+import os
+
+@app.get("/api/audit-logs")
+async def get_audit_logs():
+    """
+    Retorna os últimos 10 eventos de auditoria das ações autônomas.
+    """
+    audit_file = "audit_logs.json"
+    if not os.path.exists(audit_file):
+        return []
+    
+    try:
+        with open(audit_file, "r") as f:
+            logs = json.load(f)
+            # Retorna os últimos 10 logs (mais recentes primeiro)
+            return logs[-10:][::-1]
+    except Exception as e:
+        return []
+
 @app.get("/api/logs")
 async def get_system_logs():
     """

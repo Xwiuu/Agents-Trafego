@@ -2,30 +2,26 @@ import os
 import json
 import asyncio
 import operator
-from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence, Annotated, Union, TypedDict
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
 
 # Meta Ads API
 from facebook_business.api import FacebookAdsApi
-from facebook_business.adobjects.adaccount import AdAccount
 
 # LangChain & LangGraph
 from langchain_groq import ChatGroq
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
-from langchain_core.tools import tool
-from langchain_core.runnables import RunnableConfig
+from langchain_core.messages import BaseMessage
 from langgraph.graph import StateGraph, END, START
-from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 # Vector Database
 import chromadb
 from chromadb.api.types import Documents, Embeddings, EmbeddingFunction
 from langchain_huggingface import HuggingFaceEmbeddings
+
+from infrastructure.logger import global_logs, logger
 
 # --- CONFIGURAÇÃO E AMBIENTE ---
 load_dotenv()
@@ -43,7 +39,7 @@ if META_APP_ID and META_APP_SECRET and META_ACCESS_TOKEN:
     try:
         FacebookAdsApi.init(META_APP_ID, META_APP_SECRET, META_ACCESS_TOKEN)
     except Exception as e:
-        print(f"⚠️ Erro ao inicializar Facebook API: {e}")
+        logger.warning(f"⚠️ Erro ao inicializar Facebook API: {e}")
 
 # LLM Global
 llm = ChatGroq(
@@ -112,7 +108,7 @@ class BaseAgentV2(ABC):
         """
         Executa a lógica do agente e retorna as atualizações de estado de forma segura.
         """
-        print(f"📡 [Equipe] Agent {self.name} assumindo a tarefa...")
+        logger.info(f"📡 [Equipe] Agent {self.name} assumindo a tarefa...")
         
         try:
             # Proteção de tokens
@@ -134,7 +130,7 @@ class BaseAgentV2(ABC):
             }
         except Exception as e:
             error_msg = f"❌ Erro crítico no Agente {self.name}: {str(e)}"
-            print(error_msg)
+            logger.error(error_msg)
             return {
                 "messages": [AIMessage(content=error_msg)],
                 "executed_agents": [self.name.lower()]
@@ -256,7 +252,7 @@ Se a missão está completa, use 'FINISH'.""",
         next_agents: List[str] = Field(description="Lista de agentes. Use: [research, analyzer, strategist, memory_keeper, FINISH]")
 
     async def execute(self, state: AgentState, config: RunnableConfig) -> Dict[str, Any]:
-        print(f"📡 [Equipe] Capitão Router analisando a missão...")
+        logger.info(f"📡 [Equipe] Capitão Router analisando a missão...")
         executed = state.get("executed_agents", [])
         
         prompt = f"""Status atual: Agentes já executados: {executed}.
@@ -275,10 +271,10 @@ Decida quem deve agir agora. SEMPRE retorne uma LISTA de strings."""
             if next_steps and next_steps[0] in executed[-2:] and "FINISH" not in next_steps:
                  next_steps = ["FINISH"]
 
-            print(f"🤖 [Router] Decisão: {next_steps} | Motivo: {decision.reasoning}")
+            logger.info(f"🤖 [Router] Decisão: {next_steps} | Motivo: {decision.reasoning}")
             return {"next_agents": next_steps}
         except Exception as e:
-            print(f"❌ Erro no Router: {e}")
+            logger.error(f"❌ Erro no Router: {e}")
             return {"next_agents": ["FINISH"]}
 
 class ResearchAgent(BaseAgentV2):
@@ -353,9 +349,7 @@ class RouterSystem:
 
 # --- HELPER PARA CONSOLIDAÇÃO FINAL ---
 def print_final_response(state: AgentState):
-    print("\n" + "═"*80)
-    print("🏆 CONSOLIDAÇÃO FINAL DA EQUIPE")
-    print("═"*80)
+    logger.info("--- CONSOLIDAÇÃO FINAL DA EQUIPE ---")
     
     history = state.get("messages", [])
     consolidation_prompt = """Gere uma resposta final formatada:
@@ -366,15 +360,14 @@ def print_final_response(state: AgentState):
 
     try:
         summary = llm.invoke([SystemMessage(content=consolidation_prompt)] + list(history))
-        print(summary.content)
+        logger.info(f"\n{summary.content}")
     except Exception as e:
-        print(f"Erro ao consolidar resposta final: {e}")
+        logger.error(f"Erro ao consolidar resposta final: {e}")
         # Tenta mostrar a última mensagem útil
         for msg in reversed(history):
             if isinstance(msg, AIMessage):
-                print(msg.content)
+                logger.info(msg.content)
                 break
-    print("═"*80)
 
 # --- ENTRY POINT ---
 async def main_loop():
@@ -382,8 +375,8 @@ async def main_loop():
     thread_id = f"session_{int(datetime.now().timestamp())}"
     config = {"configurable": {"thread_id": thread_id}}
     
-    print("\n--- Meta Ads Multi-Agent System V4 (Stable) ---")
-    print("Digite sua pergunta ou 'sair' para encerrar.")
+    logger.info("--- Meta Ads Multi-Agent System V4 (Stable) ---")
+    logger.info("Sistema de Missão Crítica Inicializado.")
     
     while True:
         try:
@@ -406,7 +399,7 @@ async def main_loop():
         except KeyboardInterrupt:
             break
         except Exception as e:
-            print(f"❌ Ocorreu um erro inesperado: {e}")
+            logger.error(f"❌ Ocorreu um erro inesperado: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main_loop())

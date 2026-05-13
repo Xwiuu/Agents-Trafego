@@ -82,7 +82,7 @@ async def update_settings(settings: SettingsInput):
     Recebe as chaves do usuário e escreve no arquivo .env.
     Retorna o status atualizado de todas as chaves.
     """
-    # Validação Blindada: Impedir chaves vazias para campos essenciais
+    # Validação Blindada: Impedir chaves vazias ou muito curtas para campos essenciais
     essential_fields = {
         "Groq API Key": settings.groq_api_key,
         "Meta App ID": settings.meta_app_id,
@@ -91,11 +91,17 @@ async def update_settings(settings: SettingsInput):
         "Ad Account ID": settings.ad_account_id,
     }
     
-    missing = [name for name, val in essential_fields.items() if not val or not val.strip()]
-    if missing:
+    invalid = []
+    for name, val in essential_fields.items():
+        if not val or not val.strip():
+            invalid.append(f"{name} (vazio)")
+        elif len(val.strip()) < 8:
+            invalid.append(f"{name} (muito curto)")
+
+    if invalid:
         raise HTTPException(
             status_code=400, 
-            detail=f"Falha de Segurança: Os seguintes campos são obrigatórios: {', '.join(missing)}"
+            detail=f"Falha de Validação de Segurança: {', '.join(invalid)}"
         )
 
     env_path = _get_env_path()

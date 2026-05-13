@@ -1,7 +1,4 @@
-'use client';
-
 import './globals.css';
-import { Footer } from './components/Footer';
 
 export default function RootLayout({
   children,
@@ -12,7 +9,6 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className="bg-zinc-950 min-h-screen flex flex-col">
         {children}
-        <Footer />
       </body>
     </html>
   );

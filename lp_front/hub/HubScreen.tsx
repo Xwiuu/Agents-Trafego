@@ -27,7 +27,6 @@ export const HubScreen: React.FC<HubScreenProps> = ({
   const heroRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
   const architectureRef = useRef<HTMLDivElement>(null);
-  const [isConfiguring, setIsConfiguring] = useState(false);
   const [setupStatus, setSetupStatus] = useState<{ is_fully_configured: boolean; has_groq_key: boolean } | null>(null);
 
   useEffect(() => {
