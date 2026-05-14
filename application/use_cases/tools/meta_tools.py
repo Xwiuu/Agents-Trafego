@@ -4,43 +4,39 @@ from infrastructure.api_clients.meta_ads_client import MetaAdsClient
 
 meta_client = MetaAdsClient()
 
-@tool
-def tool_get_active_campaigns() -> str:
-    """Busca todas as campanhas que estão atualmente com status 'ACTIVE' (ativas) no Meta Ads. 
-    Use esta ferramenta para ter uma visão geral do que está rodando antes de analisar métricas específicas."""
-    campaigns = meta_client.get_active_campaigns()
+def _get_active_campaigns_payload() -> str:
+    campaigns = meta_client.get_active_campaign_summaries()
     if not campaigns:
         return "Nenhuma campanha ativa encontrada no Meta Ads."
-    
-    # Formata para JSON amigável para o Llama 3
-    data = [
-        {
-            "id": c.id,
-            "name": c.name,
-            "status": c.status,
-            "budget": f"R$ {c.budget:.2f}"
-        }
-        for c in campaigns
-    ]
-    return json.dumps(data, indent=2, ensure_ascii=False)
+
+    return json.dumps(campaigns, ensure_ascii=False, separators=(",", ":"))
+
+@tool
+def tool_get_active_campaigns() -> str:
+    """Lista campanhas ativas da Meta com KPIs essenciais dos últimos 7 dias."""
+    return _get_active_campaigns_payload()
+
+@tool
+def tool_get_campaigns() -> str:
+    """Alias de leitura para listar campanhas Meta ativas com KPIs essenciais."""
+    return _get_active_campaigns_payload()
 
 @tool
 def tool_get_campaign_metrics(campaign_id: str) -> str:
-    """Analisa a performance de uma campanha específica do Meta Ads usando seu ID.
-    Retorna métricas cruciais como ROAS, CPC, CTR, Impressões, Cliques e Gasto Total.
-    Use esta ferramenta para diagnósticos detalhados e otimização de campanhas baseada em dados reais."""
+    """Retorna KPIs de uma campanha Meta pelo ID."""
+    campaign_id = str(campaign_id).strip()
     metrics = meta_client.get_campaign_insights(campaign_id)
     if not metrics:
         return f"Não foi possível encontrar métricas para a campanha com ID {campaign_id}."
     
     data = {
         "campaign_id": campaign_id,
-        "ctr": f"{metrics.ctr:.2%}",
-        "cpc": f"R$ {metrics.cpc:.2f}",
-        "roas": f"{metrics.roas:.2f}x",
+        "ctr": round(metrics.ctr, 4),
+        "cpc": round(metrics.cpc, 2),
+        "roas": round(metrics.roas, 2),
         "conversions": metrics.conversions,
-        "impressions": metrics.impressions,
         "clicks": metrics.clicks,
-        "spend": f"R$ {metrics.spend:.2f}"
+        "spend": round(metrics.spend, 2),
+        "cpa": round(metrics.spend / metrics.conversions, 2) if metrics.conversions else None,
     }
-    return json.dumps(data, indent=2, ensure_ascii=False)
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
