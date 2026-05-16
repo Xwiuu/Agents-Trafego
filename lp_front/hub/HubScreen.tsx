@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Github, Terminal, ArrowRight, Layers, Cpu, Database, Network, LayoutDashboard, WifiOff, ShieldCheck, Activity, Eye } from 'lucide-react';
+import { Github, Terminal, ArrowRight, Layers, Cpu, Database, Network, LayoutDashboard, ShieldCheck, Activity, Eye } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
 
@@ -128,7 +128,6 @@ export const HubScreen: React.FC<HubScreenProps> = ({
 
   const handleTerminalOrSetup = async () => {
     if (isBackendOffline) return;
-    setIsConfiguring(true);
     try {
       const res = await fetch(`${API_URL}/api/settings`);
       if (!res.ok) {
@@ -143,8 +142,6 @@ export const HubScreen: React.FC<HubScreenProps> = ({
       }
     } catch (err) {
       onNeedSetup();
-    } finally {
-      setIsConfiguring(false);
     }
   };
 
@@ -206,7 +203,7 @@ export const HubScreen: React.FC<HubScreenProps> = ({
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={handleTerminalOrSetup}
-              disabled={isConfiguring || isBackendOffline}
+              disabled={isBackendOffline}
               className={`hero-cta w-full sm:w-auto font-bold px-8 py-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed ${
                 setupStatus?.is_fully_configured === false 
                 ? 'bg-zinc-900 border border-orange-500/50 text-orange-500 hover:bg-orange-500/10' 
@@ -215,7 +212,7 @@ export const HubScreen: React.FC<HubScreenProps> = ({
             >
               <Terminal size={20} />
               <span>
-                {isConfiguring ? 'Verificando...' : (isBackendOffline ? 'Backend Offline' : (setupStatus?.is_fully_configured === false ? 'Config Required' : 'Init System'))}
+                {isBackendOffline ? 'Backend Offline' : (setupStatus?.is_fully_configured === false ? 'Config Required' : 'Init System')}
               </span>
               {!isBackendOffline && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
             </button>

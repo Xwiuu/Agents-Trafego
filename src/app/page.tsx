@@ -22,12 +22,17 @@ export default function Home() {
         if (settingsRes.ok) {
           const status = await settingsRes.json();
           setIsVaultConfigured(status.is_fully_configured);
+        } else {
+          // Se o backend retornar erro (ex: 401 ou 500), bloqueia o acesso
+          setIsVaultConfigured(false);
         }
       } else {
         setIsBackendOnline(false);
+        setIsVaultConfigured(false);
       }
     } catch (err) {
       setIsBackendOnline(false);
+      setIsVaultConfigured(false);
     } finally {
       setIsChecking(false);
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, KeyRound, BrainCircuit, Globe, ArrowRight, Lock, CheckCircle2, Zap } from 'lucide-react';
+import { Shield, KeyRound, BrainCircuit, ArrowRight, Lock, CheckCircle2, Zap } from 'lucide-react';
 import gsap from 'gsap';
 
 interface SettingsStatus {
@@ -29,27 +29,76 @@ interface SettingsVaultProps {
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const VALIDATION_FAILED_MESSAGE = '⚠️ Validação Falhou: O servidor não aceitou uma ou mais chaves. Verifique os valores colados.';
 
 export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, onBack }) => {
   const [status, setStatus] = useState<SettingsStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState<SettingsForm>({
-    groq_api_key: '',
-    meta_app_id: '',
-    meta_app_secret: '',
-    meta_access_token: '',
-    ad_account_id: '',
-    langchain_api_key: '',
-  });
+
+  // Estados explícitos por campo (mais fácil de auditar e mapear)
+  const [groqKey, setGroqKey] = useState('');
+  const [langchainKey, setLangchainKey] = useState('');
+  const [metaAppId, setMetaAppId] = useState('');
+  const [metaAppSecret, setMetaAppSecret] = useState('');
+  const [metaAccessToken, setMetaAccessToken] = useState('');
+  const [adAccountId, setAdAccountId] = useState('');
+  const [isValid, setIsValid] = useState(false);
+
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+  const [hasAuthError, setHasAuthError] = useState(false);
+  const [authErrorMessage, setAuthErrorMessage] = useState(VALIDATION_FAILED_MESSAGE);
   const toastRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+
+  const validateForm = () =>
+      groqKey.trim().length > 0 &&
+      metaAppId.trim().length > 0 &&
+      metaAppSecret.trim().length > 0 &&
+      metaAccessToken.trim().length > 0 &&
+      adAccountId.trim().length > 0 &&
+      langchainKey.trim().length > 0;
+
+  // Unificação da Validação: atualiza isValid em tempo real monitorando as 6 variáveis
+  useEffect(() => {
+    setIsValid(validateForm());
+  }, [groqKey, metaAppId, metaAppSecret, metaAccessToken, adAccountId, langchainKey]);
+
+  // Log de Depuração Temporário para monitorar o estado do Vault
+  useEffect(() => {
+    const debugPreview = (value: string) => {
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed.slice(0, 3) : 'EMPTY';
+    };
+
+    console.log("🛡️ [Vault Debug] Estado dos Campos:", {
+      groq: debugPreview(groqKey),
+      langchain: debugPreview(langchainKey),
+      appId: debugPreview(metaAppId),
+      appSecret: debugPreview(metaAppSecret),
+      token: debugPreview(metaAccessToken),
+      accountId: debugPreview(adAccountId),
+      isValid: isValid
+    });
+  }, [groqKey, langchainKey, metaAppId, metaAppSecret, metaAccessToken, adAccountId, isValid]);
 
   useEffect(() => {
     fetchSettingsStatus();
     animateEntry();
   }, []);
+
+  // Inicializa variáveis de estado do formulário caso o backend retorne dados existentes
+  useEffect(() => {
+    if (!status) return;
+    // Mantém compatibilidade caso a API retorne chaves diferentes
+    // Preenche campos locais apenas se estiverem vazios
+    setGroqKey((v) => v || (''));
+    setLangchainKey((v) => v || (''));
+    setMetaAppId((v) => v || (''));
+    setMetaAppSecret((v) => v || (''));
+    setMetaAccessToken((v) => v || (''));
+    setAdAccountId((v) => v || (''));
+  }, [status]);
 
   const animateEntry = () => {
     if (formRef.current) {
@@ -91,69 +140,70 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
     }
   };
 
-  const StatusBadge = ({ active }: { active: boolean | undefined }) => (
-    <div className={`flex items-center space-x-1 px-2 py-0.5 rounded border text-[10px] font-mono font-bold uppercase tracking-tighter ${
-      active 
-        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' 
-        : 'bg-orange-500/10 border-orange-500/30 text-orange-500'
-    }`}>
-      {active ? <CheckCircle2 size={10} /> : <Lock size={10} />}
-      <span>{active ? 'Conectado' : 'Pendente'}</span>
-    </div>
-  );
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  // Handlers são explícitos por campo para evitar erros de mapeamento
+  const clearAuthError = () => {
+    if (hasAuthError) setHasAuthError(false);
+    if (authErrorMessage !== VALIDATION_FAILED_MESSAGE) setAuthErrorMessage(VALIDATION_FAILED_MESSAGE);
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validação Blindada no Frontend
-    const requiredFields = [
-      { key: 'groq_api_key', label: 'Groq API Key' },
-      { key: 'meta_app_id', label: 'App ID' },
-      { key: 'meta_app_secret', label: 'App Secret' },
-      { key: 'meta_access_token', label: 'Access Token' },
-      { key: 'ad_account_id', label: 'Ad Account ID' },
-    ];
-
-    const missing = requiredFields.filter(f => !form[f.key as keyof SettingsForm]?.trim());
-
-    if (missing.length > 0) {
-      showToast(`ERRO: Preencha todos os campos obrigatórios: ${missing.map(f => f.label).join(', ')}`, 'error');
+    if (!isValid) {
+      showToast('ERRO: Preencha todos os campos obrigatórios.', 'error');
       return;
     }
 
     setIsSaving(true);
+    setHasAuthError(false);
+
+    const payload: SettingsForm = {
+      groq_api_key: groqKey.trim(),
+      meta_app_id: metaAppId.trim(),
+      meta_app_secret: metaAppSecret.trim(),
+      meta_access_token: metaAccessToken.trim(),
+      ad_account_id: adAccountId.trim(),
+      langchain_api_key: langchainKey.trim(),
+    };
 
     try {
       const res = await fetch(`${API_URL}/api/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Erro ao salvar configurações');
+        let errBody = {} as any;
+        try { errBody = await res.json(); } catch (_) {}
+        const errorMessage = errBody.error || errBody.detail || 'Erro ao salvar configurações';
+
+        if (res.status === 401) {
+          setHasAuthError(true);
+          setAuthErrorMessage(errorMessage);
+          showToast(errorMessage, 'error');
+          return;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const result = await res.json();
       const updatedStatus = result.data as SettingsStatus;
-      
-      // Atualiza o estado individual de cada input imediatamente
+
       setStatus(updatedStatus);
 
       if (updatedStatus.is_fully_configured) {
         showToast('Sistemas Online. Configurações armazenadas no Vault.', 'success');
-        setForm({ groq_api_key: '', meta_app_id: '', meta_app_secret: '', meta_access_token: '', ad_account_id: '', langchain_api_key: '' });
+        // limpa campos
+        setGroqKey(''); setMetaAppId(''); setMetaAppSecret(''); setMetaAccessToken(''); setAdAccountId(''); setLangchainKey('');
         setTimeout(() => onSetupComplete(), 2000);
       } else {
         showToast('Configurações parciais salvas. Algumas chaves ainda estão pendentes.', 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Erro ao conectar. Verifique a porta do backend.', 'error');
+      showToast(err.message || 'Erro ao conectar. Verifique o servidor.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -171,197 +221,187 @@ export const SettingsVault: React.FC<SettingsVaultProps> = ({ onSetupComplete, o
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background gradient */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-orange-500/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <div ref={formRef} className="relative z-10 w-full max-w-2xl">
+      <div ref={formRef} className="relative z-10 w-full max-w-xl bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl shadow-black/50">
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-zinc-900 border border-zinc-800 rounded-2xl mb-6">
-            <Shield size={32} className="text-orange-500" />
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-zinc-950 border border-zinc-800 rounded-xl mb-4">
+            <Shield size={24} className="text-orange-500" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
-            <span className="bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">VAULT ACCESS</span>
+          <h1 className="text-3xl font-black tracking-tighter mb-2">
+            <span className="bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent uppercase">Vault Access</span>
           </h1>
-          <p className="text-zinc-400 font-mono text-sm max-w-lg mx-auto">
-            Configure as chaves de acesso para ativar o Esquadrão de Agentes. Todas as credenciais são criptografadas localmente.
+          <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-widest max-w-xs mx-auto">
+            Credenciais Criptografadas: Validando Acesso ao Esquadrão
           </p>
         </div>
 
-        {/* Status indicators */}
-        {status && (
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-            <button 
-              onClick={onBack}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md border border-zinc-800 bg-zinc-900/50 text-zinc-500 hover:text-white hover:border-zinc-700 transition-colors text-xs font-mono uppercase tracking-wider mr-2"
-            >
-              <ArrowRight size={12} className="rotate-180" />
-              <span>Back</span>
-            </button>
-            {[
-              { label: 'Groq', active: status.has_groq_key },
-              { label: 'LangChain', active: status.has_langchain_key },
-              { label: 'App ID', active: status.has_meta_app_id },
-              { label: 'Secret', active: status.has_meta_app_secret },
-              { label: 'Token', active: status.has_meta_access_token },
-              { label: 'Account', active: status.has_ad_account_id },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md border text-xs font-mono font-bold tracking-wider uppercase ${
-                  item.active
-                    ? 'bg-orange-500/10 border-orange-500/30 text-orange-400'
-                    : 'bg-zinc-900/50 border-zinc-800 text-zinc-600'
-                }`}
-              >
-                {item.active ? <CheckCircle2 size={12} /> : <Lock size={12} />}
-                <span>{item.label}</span>
-              </div>
-            ))}
+        {/* Error Pulse Warning */}
+        {hasAuthError && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center space-x-3 animate-pulse">
+            <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 flex-shrink-0">
+              <Zap size={16} />
+            </div>
+            <p className="text-xs font-mono font-bold text-red-500 uppercase leading-tight">
+              {authErrorMessage}
+            </p>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Brain Section */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <BrainCircuit size={20} className="text-orange-500" />
-              <h2 className="text-sm font-mono font-bold tracking-widest uppercase text-orange-500">Seção Cérebro</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">Groq API Key (Llama 3)</label>
-                  <StatusBadge active={status?.has_groq_key} />
-                </div>
-                <div className="relative">
-                  <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
-                  <input
-                    type="password"
-                    name="groq_api_key"
-                    value={form.groq_api_key}
-                    onChange={handleChange}
-                    className="w-full bg-zinc-950 text-white pl-10 pr-4 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
-                    placeholder="gsk_..."
-                  />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest ml-1">Groq API Key (Llama 3)</label>
+              <div className="relative group">
+                <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-orange-500 transition-colors" />
+                <input
+                  type="password"
+                  name="groq_api_key"
+                  value={groqKey}
+                  onChange={(e) => { setGroqKey(e.target.value); clearAuthError(); }}
+                  className={`w-full bg-zinc-950 text-white pl-10 pr-12 py-3 rounded-xl border ${hasAuthError ? 'border-red-500/50' : 'border-zinc-800'} focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all`}
+                  placeholder="gsk_..."
+                  autoComplete="off"
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  {isSaving ? (
+                    <div className="w-4 h-4 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+                  ) : groqKey.trim().length > 0 ? (
+                    <CheckCircle2 size={16} className="text-emerald-500" />
+                  ) : (
+                    <Lock size={16} className="text-zinc-700" />
+                  )}
                 </div>
               </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">LangChain API Key (Tracing)</label>
-                  <StatusBadge active={status?.has_langchain_key} />
-                </div>
-                <div className="relative">
-                  <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
-                  <input
-                    type="password"
-                    name="langchain_api_key"
-                    value={form.langchain_api_key}
-                    onChange={handleChange}
-                    className="w-full bg-zinc-950 text-white pl-10 pr-4 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
-                    placeholder="lsv2_..."
-                  />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest ml-1">LangChain API Key</label>
+              <div className="relative group">
+                <BrainCircuit size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-orange-500 transition-colors" />
+                <input
+                  type="password"
+                  name="langchain_api_key"
+                  value={langchainKey}
+                  onChange={(e) => { setLangchainKey(e.target.value); clearAuthError(); }}
+                  className={`w-full bg-zinc-950 text-white pl-10 pr-12 py-3 rounded-xl border ${hasAuthError ? 'border-red-500/50' : 'border-zinc-800'} focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all`}
+                  placeholder="lsv2_..."
+                  autoComplete="off"
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  {isSaving ? (
+                    <div className="w-4 h-4 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+                  ) : langchainKey.trim().length > 0 ? (
+                    <CheckCircle2 size={16} className="text-emerald-500" />
+                  ) : (
+                    <Lock size={16} className="text-zinc-700" />
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Meta Ads Section */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 space-y-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <Globe size={20} className="text-orange-500" />
-              <h2 className="text-sm font-mono font-bold tracking-widest uppercase text-orange-500">Seção Meta Ads</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">App ID</label>
-                  <StatusBadge active={status?.has_meta_app_id} />
-                </div>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
-                  <input
-                    type="password"
-                    name="meta_app_id"
-                    value={form.meta_app_id}
-                    onChange={handleChange}
-                    className="w-full bg-zinc-950 text-white pl-9 pr-4 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
-                    placeholder=""
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">App Secret</label>
-                  <StatusBadge active={status?.has_meta_app_secret} />
-                </div>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
-                  <input
-                    type="password"
-                    name="meta_app_secret"
-                    value={form.meta_app_secret}
-                    onChange={handleChange}
-                    className="w-full bg-zinc-950 text-white pl-9 pr-4 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
-                    placeholder=""
-                  />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest ml-1">Meta App ID</label>
+              <div className="relative group">
+                <input
+                  type="password"
+                  name="meta_app_id"
+                  value={metaAppId}
+                  onChange={(e) => setMetaAppId(e.target.value)}
+                  className="w-full bg-zinc-950 text-white px-4 pr-10 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
+                  autoComplete="off"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {metaAppId.trim().length > 0 ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Lock size={14} className="text-zinc-700" />}
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">Access Token</label>
-                  <StatusBadge active={status?.has_meta_access_token} />
-                </div>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
-                  <input
-                    type="password"
-                    name="meta_access_token"
-                    value={form.meta_access_token}
-                    onChange={handleChange}
-                    className="w-full bg-zinc-950 text-white pl-9 pr-4 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
-                    placeholder=""
-                  />
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest ml-1">App Secret</label>
+              <div className="relative group">
+                <input
+                  type="password"
+                  name="meta_app_secret"
+                  value={metaAppSecret}
+                  onChange={(e) => setMetaAppSecret(e.target.value)}
+                  className="w-full bg-zinc-950 text-white px-4 pr-10 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
+                  autoComplete="off"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {metaAppSecret.trim().length > 0 ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Lock size={14} className="text-zinc-700" />}
                 </div>
               </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider">Ad Account ID</label>
-                  <StatusBadge active={status?.has_ad_account_id} />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest ml-1">Access Token</label>
+              <div className="relative group">
+                <input
+                  type="password"
+                  name="meta_access_token"
+                  value={metaAccessToken}
+                  onChange={(e) => setMetaAccessToken(e.target.value)}
+                  className="w-full bg-zinc-950 text-white px-4 pr-10 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
+                  autoComplete="off"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {metaAccessToken.trim().length > 0 ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Lock size={14} className="text-zinc-700" />}
                 </div>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
-                  <input
-                    type="password"
-                    name="ad_account_id"
-                    value={form.ad_account_id}
-                    onChange={handleChange}
-                    className="w-full bg-zinc-950 text-white pl-9 pr-4 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
-                    placeholder=""
-                  />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest ml-1">Account ID</label>
+              <div className="relative group">
+                <input
+                  type="password"
+                  name="ad_account_id"
+                  value={adAccountId}
+                  onChange={(e) => setAdAccountId(e.target.value)}
+                  className="w-full bg-zinc-950 text-white px-4 pr-10 py-3 rounded-xl border border-zinc-800 focus:border-orange-500/50 focus:outline-none font-mono text-sm transition-all"
+                  autoComplete="off"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {adAccountId.trim().length > 0 ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Lock size={14} className="text-zinc-700" />}
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Validation Feedback */}
+          {!isValid && (
+            <p className="text-[10px] font-mono text-orange-500/70 text-center animate-pulse uppercase tracking-widest">
+              Aguardando preenchimento de todos os 6 campos obrigatórios...
+            </p>
+          )}
+
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isSaving}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-all duration-300 group"
+            disabled={isSaving || !isValid}
+            className={`w-full mt-2 ${
+              (isSaving || !isValid)
+                ? 'bg-zinc-800 cursor-not-allowed text-zinc-500' 
+                : 'bg-orange-500 hover:bg-orange-600 text-black shadow-[0_0_20px_rgba(249,115,22,0.3)]'
+            } disabled:opacity-50 font-black uppercase tracking-tighter py-4 rounded-xl flex items-center justify-center space-x-2 transition-all duration-300 group`}
           >
             {isSaving ? (
               <>
                 <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                <span>CONECTANDO...</span>
+                <span>Executando Handshake...</span>
               </>
             ) : (
               <>
-                <span>Conectar Esquadrão</span>
+                <span>{hasAuthError ? 'Credenciais Inválidas' : 'Conectar Esquadrão'}</span>
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </>
             )}

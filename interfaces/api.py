@@ -1,3 +1,13 @@
+import os
+import sys
+from dotenv import load_dotenv
+
+# Forçar recarregamento das variáveis de ambiente
+load_dotenv(override=True)
+
+# Garante que o diretório raiz está no path para evitar ModuleNotFoundError
+sys.path.append(os.getcwd())
+
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request

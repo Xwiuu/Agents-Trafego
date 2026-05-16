@@ -29,18 +29,11 @@ async def process_message(message: ChatMessage) -> AgentResponse:
     """
     Processa uma mensagem usando o RouterSystem e retorna uma resposta estruturada.
     """
-    # Recarregar .env para garantir que pegamos a chave atualizada do Vault
-    load_dotenv(override=True)
-    groq_api_key = os.getenv("GROQ_API_KEY")
-
-    if not groq_api_key:
-        return AgentResponse(
-            response="⚠️ [Vault] Groq API Key não encontrada. Por favor, configure seu acesso no Vault.",
-            metrics={"ctr": 0, "cpc": 0, "roas": 0}
-        )
-
     try:
-        orchestrator = RouterSystem(api_key=groq_api_key)
+        # Forçar recarregamento para garantir que o orquestrador veja a chave nova
+        load_dotenv(override=True)
+
+        orchestrator = RouterSystem()
         response_text = await orchestrator.run(message.message)
 
         # Extrair métricas reais via Regex
@@ -51,7 +44,8 @@ async def process_message(message: ChatMessage) -> AgentResponse:
             metrics=metrics
         )
     except Exception as e:
+        logger.exception(f"Erro ao processar mensagem no use case: {e}")
         return AgentResponse(
-            response=f"❌ [Erro] Falha ao processar mensagem: {str(e)}",
+            response=f"❌ [Erro Crítico] Falha ao processar mensagem: {str(e)}",
             metrics={"ctr": 0, "cpc": 0, "roas": 0}
         )

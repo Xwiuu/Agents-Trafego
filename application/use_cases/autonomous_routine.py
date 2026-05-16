@@ -25,15 +25,17 @@ def save_audit_log(action: str, campaign_id: str, reason: str):
     logs = []
     if os.path.exists(AUDIT_FILE):
         try:
-            with open(AUDIT_FILE, "r") as f:
+            with open(AUDIT_FILE, "r", encoding="utf-8") as f:
                 logs = json.load(f)
-        except:
+                if not isinstance(logs, list):
+                    logs = []
+        except (json.JSONDecodeError, OSError):
             logs = []
             
     logs.append(log_entry)
     
-    with open(AUDIT_FILE, "w") as f:
-        json.dump(logs, f, indent=4)
+    with open(AUDIT_FILE, "w", encoding="utf-8") as f:
+        json.dump(logs, f, indent=4, ensure_ascii=False)
 
 def get_daily_action_count() -> int:
     """Conta quantas ações foram realizadas hoje."""
@@ -42,10 +44,10 @@ def get_daily_action_count() -> int:
     
     today = datetime.now().date().isoformat()
     try:
-        with open(AUDIT_FILE, "r") as f:
+        with open(AUDIT_FILE, "r", encoding="utf-8") as f:
             logs = json.load(f)
             return sum(1 for log in logs if log["timestamp"].startswith(today))
-    except:
+    except (json.JSONDecodeError, OSError, KeyError, TypeError):
         return 0
 
 async def run_autonomous_inspection():
@@ -73,11 +75,14 @@ async def run_autonomous_inspection():
 
         # Prompt de Sistema oculto para o Orquestrador
         autonomous_prompt = (
-            "Iniciando inspeção autônoma agendada. Analise todas as campanhas ativas. "
-            "Se alguma campanha tiver um ROAS menor que 1.0 e um gasto superior a R$ 50,00, "
-            "chame o Operator para PAUSAR a campanha imediatamente. "
-            "Se houver campanhas com ROAS maior que 3.0, liste-as para futuro aumento de orçamento. "
-            "Grave um resumo das suas ações na memória. "
+            "Iniciando inspeção autônoma agendada. "
+            "Fluxo obrigatório: Primeiro, use o Agent Research para listar as campanhas ativas. "
+            "Depois, passe os dados para o Analyzer avaliar ROAS, gasto, conversões e CPA. "
+            "Por fim, se houver necessidade de pausa, o Operator deve agir usando APENAS "
+            "as ferramentas de mutação (pause/budget). "
+            "Critério de pausa: campanha com ROAS menor que 1.0 e gasto superior a R$ 50,00. "
+            "Campanhas com ROAS maior que 3.0 devem ser listadas para futuro aumento de orçamento, "
+            "sem alteração automática de budget. "
             "IMPORTANTE: Sempre que pausar ou recomendar escala, descreva claramente o ID da campanha e o motivo."
         )
 
