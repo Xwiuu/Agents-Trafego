@@ -48,7 +48,7 @@ Nesta versão, implementamos camadas adicionais de proteção:
     ```
 4.  **Iniciar o Sistema:**
     ```bash
-    python main.py
+    python -m interfaces.api
     ```
 
 ---

@@ -72,7 +72,7 @@ export default function Home() {
             Certifique-se de que o backend está rodando em <span className="text-white">{API_URL}</span>.
           </p>
           <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg text-left">
-            <code className="text-xs text-orange-500 font-mono">python main.py</code>
+            <code className="text-xs text-orange-500 font-mono">python -m interfaces.api</code>
           </div>
         </div>
       </div>
