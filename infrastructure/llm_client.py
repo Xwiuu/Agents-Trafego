@@ -4,7 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from domain.models import ChatMessage, AgentResponse
 
 class LLMClient:
-    def __init__(self, groq_api_key: str, model_name: str = "llama-3.1-8b-instant", temperature: float = 0.1):
+    def __init__(self, groq_api_key: str, model_name: str = "llama-3.3-70b-versatile", temperature: float = 0.1):
         self.llm = ChatGroq(
             groq_api_key=groq_api_key,
             model_name=model_name,

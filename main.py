@@ -50,7 +50,7 @@ if META_APP_ID and META_APP_SECRET and META_ACCESS_TOKEN:
 # LLM Global
 llm = ChatGroq(
     groq_api_key=GROQ_API_KEY,
-    model_name="llama-3.1-8b-instant",
+    model_name="llama-3.3-70b-versatile",
     temperature=0.1
 )
 

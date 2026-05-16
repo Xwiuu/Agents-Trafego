@@ -28,8 +28,8 @@ from application.use_cases.tools.memory_tools import tool_save_memory, tool_sear
 from application.use_cases.tools.operator_tools import tool_pause_campaign, tool_increase_budget
 from infrastructure.logger import global_logs, logger
 
-DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant"
-ANALYZER_GROQ_MODEL = os.getenv("GROQ_ANALYZER_MODEL", DEFAULT_GROQ_MODEL)
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+ANALYZER_GROQ_MODEL = os.getenv("GROQ_ANALYZER_MODEL", "llama-3.3-70b-versatile")
 MAX_CONTEXT_MESSAGES = 5
 TOOL_VALIDATION_ERROR_MESSAGE = "Erro: Você tentou usar uma ferramenta que não possui. Use o fluxo correto de agentes."
 

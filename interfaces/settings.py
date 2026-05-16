@@ -12,9 +12,9 @@ from facebook_business.adobjects.adaccount import AdAccount
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
-GROQ_HANDSHAKE_MODEL = "llama-3.1-8b-instant"
-GROQ_DEFAULT_MODEL = "llama-3.1-8b-instant"
-GROQ_ANALYZER_MODEL = "llama-3.1-70b-versatile"
+GROQ_HANDSHAKE_MODEL = "llama-3.3-70b-versatile"
+GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+GROQ_ANALYZER_MODEL = "llama-3.3-70b-versatile"
 
 
 def _extract_groq_error_message(error: Exception) -> str:
