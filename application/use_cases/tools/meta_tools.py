@@ -5,11 +5,21 @@ from infrastructure.api_clients.meta_ads_client import MetaAdsClient
 meta_client = MetaAdsClient()
 
 def _get_active_campaigns_payload() -> str:
-    campaigns = meta_client.get_active_campaign_summaries()
-    if not campaigns:
-        return "Nenhuma campanha ativa encontrada no Meta Ads."
+    payload = meta_client.get_active_campaign_summaries()
+    return payload
 
-    return json.dumps(campaigns, ensure_ascii=False, separators=(",", ":"))
+def _get_campaign_metrics_logic(campaign_id: str) -> str:
+    campaign_id = str(campaign_id).strip()
+    m = meta_client.get_campaign_insights(campaign_id)
+    if not m:
+        return f"ID:{campaign_id}|Erro:Não encontrado"
+    
+    return f"ID:{campaign_id}|CTR:{round(m.ctr,4)}|CPC:{round(m.cpc,2)}|ROAS:{round(m.roas,2)}|Conv:{m.conversions}|Gasto:{round(m.spend,2)}"
+
+@tool
+def tool_get_active_campaign_metrics(campaign_id: str) -> str:
+    """Retorna KPIs compactos de uma campanha Meta pelo ID."""
+    return _get_campaign_metrics_logic(campaign_id)
 
 @tool
 def tool_get_active_campaigns() -> str:
@@ -24,19 +34,4 @@ def tool_get_campaigns() -> str:
 @tool
 def tool_get_campaign_metrics(campaign_id: str) -> str:
     """Retorna KPIs de uma campanha Meta pelo ID."""
-    campaign_id = str(campaign_id).strip()
-    metrics = meta_client.get_campaign_insights(campaign_id)
-    if not metrics:
-        return f"Não foi possível encontrar métricas para a campanha com ID {campaign_id}."
-    
-    data = {
-        "campaign_id": campaign_id,
-        "ctr": round(metrics.ctr, 4),
-        "cpc": round(metrics.cpc, 2),
-        "roas": round(metrics.roas, 2),
-        "conversions": metrics.conversions,
-        "clicks": metrics.clicks,
-        "spend": round(metrics.spend, 2),
-        "cpa": round(metrics.spend / metrics.conversions, 2) if metrics.conversions else None,
-    }
-    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return _get_campaign_metrics_logic(campaign_id)

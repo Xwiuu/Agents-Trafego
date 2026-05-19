@@ -28,8 +28,6 @@ from application.use_cases.tools.memory_tools import tool_save_memory, tool_sear
 from application.use_cases.tools.operator_tools import tool_pause_campaign, tool_increase_budget
 from infrastructure.logger import global_logs, logger
 
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
-ANALYZER_GROQ_MODEL = os.getenv("GROQ_ANALYZER_MODEL", "llama-3.3-70b-versatile")
 MAX_CONTEXT_MESSAGES = 5
 TOOL_VALIDATION_ERROR_MESSAGE = "Erro: Você tentou usar uma ferramenta que não possui. Use o fluxo correto de agentes."
 
@@ -45,12 +43,20 @@ class AgentState(TypedDict):
     intermediate_data: Dict[str, Any]
 
 def trim_messages(messages: List[BaseMessage], max_messages: int = MAX_CONTEXT_MESSAGES) -> List[BaseMessage]:
-    """Envia só as últimas mensagens ao LLM para caber no limite TPM da Groq."""
+    """Garante que o histórico de mensagens contenha apenas a última mensagem do usuário e da rodada atual (Prevenção 413 TPM)."""
     if not messages:
         return []
-    if len(messages) <= max_messages:
-        return messages
-    return list(messages[-max_messages:])
+    
+    last_human_idx = -1
+    for i in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[i], HumanMessage):
+            last_human_idx = i
+            break
+            
+    if last_human_idx != -1:
+        return list(messages[last_human_idx:])
+    
+    return [messages[-1]]
 
 def is_tool_validation_bad_request(error: Exception) -> bool:
     """Identifica erros 400 de validação de tool vindos do provedor de LLM."""
@@ -71,24 +77,29 @@ def should_retry_agent_error(error: Exception) -> bool:
 # --- ORQUESTRADOR ---
 class RouterSystem:
     def __init__(self, api_key: Optional[str] = None):
-        """O orquestrador agora carrega as chaves dinamicamente a cada execução."""
+        """O orquestrador agora utiliza uma arquitetura híbrida de modelos."""
         if api_key:
             os.environ["GROQ_API_KEY"] = api_key
-        self.memory = MemorySaver()
-        self.graph = self._build_graph()
-
-    def _get_llm(self, model_name: Optional[str] = None):
-        """Instancia o LLM com a chave atualizada do ambiente."""
-        load_dotenv(override=True)
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-             raise ValueError("⚠️ [Critical] GROQ_API_KEY não encontrada no ambiente.")
         
-        return ChatGroq(
-            groq_api_key=api_key,
-            model_name=model_name or os.getenv("GROQ_DEFAULT_MODEL", DEFAULT_GROQ_MODEL),
+        load_dotenv(override=True)
+        self.api_key = os.getenv("GROQ_API_KEY")
+        if not self.api_key:
+             raise ValueError("⚠️ [Critical] GROQ_API_KEY não encontrada no ambiente.")
+
+        # Instanciação dos dois modelos Groq (Llama 3.1 8B e Llama 3.3 70B)
+        self.llm_fast = ChatGroq(
+            groq_api_key=self.api_key,
+            model_name="llama-3.1-8b-instant",
             temperature=0.1
         )
+        self.llm_smart = ChatGroq(
+            groq_api_key=self.api_key,
+            model_name="llama-3.3-70b-versatile",
+            temperature=0.1
+        )
+        
+        self.memory = MemorySaver()
+        self.graph = self._build_graph()
 
     def _compact_state(self, state: AgentState) -> AgentState:
         compact_state = dict(state)
@@ -98,7 +109,7 @@ class RouterSystem:
     def _build_graph(self):
         builder = StateGraph(AgentState)
         
-        # --- DEFINIÇÃO DOS NODES COM INSTANCIAÇÃO DINÂMICA ---
+        # --- DEFINIÇÃO DOS NODES COM MODELOS ESPECÍFICOS ---
         
         @retry(
             stop=stop_after_attempt(3),
@@ -108,9 +119,8 @@ class RouterSystem:
         )
         async def research_node(state: AgentState, config: RunnableConfig):
             global_logs.set_active_agent("Research")
-            llm = self._get_llm()
             agent = create_react_agent(
-                llm, 
+                self.llm_fast, # Research usa o modelo rápido
                 READ_ONLY_META_TOOLS, 
                 prompt=(
                     "Liste campanhas Meta ativas usando a ferramenta. Responda curto: id, nome, status, gasto, cliques, conversões, CPA. "
@@ -119,7 +129,7 @@ class RouterSystem:
                 )
             )
             
-            logger.info("Invocando Agent Research para buscar campanhas...")
+            logger.info("Invocando Agent Research (llm_fast) para buscar campanhas...")
             try:
                 result = await agent.ainvoke(self._compact_state(state), config)
                 logger.info("Agent Research concluiu a pesquisa.")
@@ -136,20 +146,32 @@ class RouterSystem:
         )
         async def analyzer_node(state: AgentState, config: RunnableConfig):
             global_logs.set_active_agent("Analyzer")
-            llm = self._get_llm(os.getenv("GROQ_ANALYZER_MODEL", ANALYZER_GROQ_MODEL))
-            agent = create_react_agent(
-                llm, 
-                READ_ONLY_META_TOOLS, 
-                prompt=(
-                    "Analise KPIs Meta. Use dados da ferramenta. Responda em bullets curtos: problema, evidência, ação. "
-                    "ATENÇÃO: VOCÊ DEVE USAR APENAS OS IDS NUMÉRICOS REAIS (EX: 123456789) RECEBIDOS PELA FERRAMENTA. "
-                    "NUNCA USE PLACEHOLDERS COMO 'ID da campanha X' OU NOMES DAS CAMPANHAS NO LUGAR DO ID."
-                )
+            # Analyzer prioriza o modelo pesado llama-3.3-70b
+            prompt_text = (
+                "Analise KPIs Meta. Use dados da ferramenta. Responda em bullets curtos: problema, evidência, ação. "
+                "ATENÇÃO: VOCÊ DEVE USAR APENAS OS IDS NUMÉRICOS REAIS (EX: 123456789) RECEBIDOS PELA FERRAMENTA. "
+                "NUNCA USE PLACEHOLDERS COMO 'ID da campanha X' OU NOMES DAS CAMPANHAS NO LUGAR DO ID."
             )
             
-            logger.info("Invocando Agent Analyzer para processar métricas...")
+            agent = create_react_agent(
+                self.llm_smart, 
+                READ_ONLY_META_TOOLS, 
+                prompt=prompt_text
+            )
+            
+            logger.info("Invocando Agent Analyzer (llm_smart) para processar métricas...")
             try:
-                result = await agent.ainvoke(self._compact_state(state), config)
+                # Implementação do Fallback automático para 429
+                try:
+                    result = await agent.ainvoke(self._compact_state(state), config)
+                except Exception as e:
+                    if "429" in str(e) or "rate_limit" in str(e).lower():
+                        logger.warning("⚠️ Rate limit no Analyzer. Usando fallback llm_fast.")
+                        fallback_agent = create_react_agent(self.llm_fast, READ_ONLY_META_TOOLS, prompt=prompt_text)
+                        result = await fallback_agent.ainvoke(self._compact_state(state), config)
+                    else:
+                        raise e
+
                 logger.info("Agent Analyzer finalizou a análise de performance.")
                 return {"messages": [result["messages"][-1]], "executed_agents": ["analyzer"]}
             except Exception as e:
@@ -164,9 +186,8 @@ class RouterSystem:
         )
         async def operator_node(state: AgentState, config: RunnableConfig):
             global_logs.set_active_agent("Operator")
-            llm = self._get_llm()
             agent = create_react_agent(
-                llm,
+                self.llm_fast, # Operator usa o modelo rápido
                 OPERATOR_TOOLS,
                 prompt=(
                     "Execute ações Meta somente quando pedidas. "
@@ -179,7 +200,7 @@ class RouterSystem:
                 )
             )
             
-            logger.info("Invocando Agent Operator para executar ação...")
+            logger.info("Invocando Agent Operator (llm_fast) para executar ação...")
             try:
                 result = await agent.ainvoke(self._compact_state(state), config)
                 logger.info("Agent Operator concluiu a execução da tarefa.")
@@ -196,9 +217,8 @@ class RouterSystem:
         )
         async def memory_node(state: AgentState, config: RunnableConfig):
             global_logs.set_active_agent("Memory")
-            llm = self._get_llm()
             agent = create_react_agent(
-                llm, 
+                self.llm_fast, # Memory Keeper usa o modelo rápido
                 [tool_save_memory, tool_search_memory], 
                 prompt=(
                     "Use memória só quando pedido: salvar insight ou buscar contexto. Responda curto. "
@@ -207,7 +227,7 @@ class RouterSystem:
                 )
             )
             
-            logger.info("Invocando Agent Memory Keeper para acessar ChromaDB...")
+            logger.info("Invocando Agent Memory Keeper (llm_fast) para acessar ChromaDB...")
             try:
                 result = await agent.ainvoke(self._compact_state(state), config)
                 logger.info("Agent Memory Keeper atualizou a memória vetorial.")

@@ -95,8 +95,8 @@ class MetaAdsClient:
         retry=retry_if_exception_type(Exception),
         reraise=True
     )
-    def get_active_campaign_summaries(self) -> List[Dict[str, Any]]:
-        """Retorna campanhas ativas em formato compacto: id, nome, status e KPIs essenciais."""
+    def get_active_campaign_summaries(self) -> str:
+        """Retorna campanhas ativas em formato string super compacto para economizar tokens."""
         try:
             account = self._init_api()
             limit = int(os.getenv("META_CAMPAIGN_SUMMARY_LIMIT", "25"))
@@ -111,7 +111,7 @@ class MetaAdsClient:
             }
             active_campaigns = list(account.get_campaigns(fields=campaign_fields, params=campaign_params))
             if not active_campaigns:
-                return []
+                return "Nenhuma campanha ativa encontrada."
 
             summaries = {
                 str(c.get("id")): {
@@ -119,18 +119,17 @@ class MetaAdsClient:
                     "name": str(c.get("name", "")),
                     "status": str(c.get("status", "ACTIVE")),
                     "spend": 0.0,
-                    "clicks": 0,
                     "conversions": 0,
-                    "cpa": None,
+                    "roas": 0.0
                 }
                 for c in active_campaigns
             }
 
             insight_fields = [
                 AdsInsights.Field.campaign_id,
-                AdsInsights.Field.clicks,
                 AdsInsights.Field.spend,
                 AdsInsights.Field.actions,
+                AdsInsights.Field.purchase_roas,
             ]
             params = {
                 "date_preset": "last_7d",
@@ -149,15 +148,30 @@ class MetaAdsClient:
                 if campaign_id not in summaries:
                     continue
                 spend = self._to_float(row.get("spend"))
-                clicks = int(self._to_float(row.get("clicks")))
                 conversions = self._extract_conversions(row.get("actions", []))
+                
+                roas = 0.0
+                for item in row.get("purchase_roas", []) or []:
+                    if item.get("action_type") in {"purchase", "omni_purchase"}:
+                        roas = self._to_float(item.get("value"))
+                        break
+                
                 summaries[campaign_id].update({
                     "spend": round(spend, 2),
-                    "clicks": clicks,
                     "conversions": conversions,
-                    "cpa": round(spend / conversions, 2) if conversions else None,
+                    "roas": round(roas, 2),
                 })
-            return list(summaries.values())
+            
+            # Ordena por gasto (maior para menor) e limita a 5 campanhas (Prevenção 413 TPM)
+            sorted_campaigns = sorted(summaries.values(), key=lambda x: x["spend"], reverse=True)[:5]
+            
+            # Conversão para formato super compacto (densa)
+            lines = []
+            for s in sorted_campaigns:
+                line = f"ID:{s['id']},Name:{s['name']},Spend:{s['spend']},ROAS:{s['roas']},Status:{s['status']}"
+                lines.append(line)
+            
+            return "\n".join(lines)
         except Exception as e:
             logger.error(f"Error fetching compact Meta campaign summaries: {e}")
             raise
